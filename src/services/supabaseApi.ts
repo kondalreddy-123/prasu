@@ -110,14 +110,15 @@ async function mapPatientWallet(patientId: string) {
   const client = requireSupabase();
   const uid = await userId();
   if (uid !== patientId) throw Object.assign(new Error('The signed-in patient does not own this record.'), { status: 403 });
-  const [profileResult, recordsResult, prescriptionsResult, inboxResult, auditsResult] = await Promise.all([
+  const [profileResult, recordsResult, prescriptionsResult, inboxResult, auditsResult, emergencyAuditsResult] = await Promise.all([
     client.from('patient_profiles').select('*').eq('user_id', uid).single(),
     client.from('health_records').select('*').eq('patient_user_id', uid).order('record_date', { ascending: false, nullsFirst: false }),
     client.from('prescription_records').select('*').eq('patient_user_id', uid).order('created_at', { ascending: false }),
     client.rpc('get_patient_consent_inbox'),
     client.from('audit_events').select('*').eq('patient_user_id', uid).order('occurred_at', { ascending: false }).limit(200),
+    client.from('emergency_access_events').select('id, patient_user_id, actor_user_id, actor_name, reason, categories, occurred_at').eq('patient_user_id', uid).order('occurred_at', { ascending: false }).limit(100),
   ]);
-  for (const item of [profileResult, recordsResult, prescriptionsResult, inboxResult, auditsResult]) if (item.error) throw item.error;
+  for (const item of [profileResult, recordsResult, prescriptionsResult, inboxResult, auditsResult, emergencyAuditsResult]) if (item.error) throw item.error;
   const profile = profileResult.data;
   const records = recordsResult.data || [];
   const mappedRecords = await Promise.all(records.map(async (row: any) => ({
@@ -149,12 +150,19 @@ async function mapPatientWallet(patientId: string) {
     },
     record: { allergies, medicines, visits, reports, prescriptions, chronicConditions: [], vitals: [], vaccinations: [] },
     grants: consentGrants,
-    auditLogs: (auditsResult.data || []).map((event: any) => ({
+    auditLogs: [
+      ...(auditsResult.data || []).map((event: any) => ({
       id: event.id, patientId: event.patient_user_id, timestamp: event.occurred_at,
       action: event.event_type, actorName: event.actor_user_id === uid ? profile.display_name : 'Authorized provider',
       plainSummary: `${event.event_type.replaceAll('_', ' ')} · ${(event.categories || []).join(', ')}`,
-    })),
-    emergencyLinks: [], notifications: [], auditChainVerification: { totalEntries: auditsResult.data?.length || 0, simulated: false },
+      })),
+      ...(emergencyAuditsResult.data || []).map((event: any) => ({
+        id: event.id, patientId: event.patient_user_id, timestamp: event.occurred_at,
+        action: 'EMERGENCY_ACCESS', actorName: event.actor_name || 'Verified doctor',
+        plainSummary: `Emergency access by ${event.actor_name || 'verified doctor'} · ${event.reason} · ${(event.categories || []).join(', ')}`,
+      })),
+    ].sort((a: any, b: any) => Date.parse(b.timestamp) - Date.parse(a.timestamp)),
+    emergencyLinks: [], notifications: [], auditChainVerification: { totalEntries: (auditsResult.data?.length || 0) + (emergencyAuditsResult.data?.length || 0), simulated: false },
   };
 }
 
@@ -243,6 +251,20 @@ export async function handleSupabaseApiRequest(endpoint: string, options: Option
       const row = Array.isArray(data) ? data[0] : data;
       if (!row) return result(false, 404, { error: 'No patient matches that HealthPass ID.' });
       return result(true, 200, { lookup: { patientId: row.patient_user_id, name: row.display_name, healthPassId: row.healthpass_id, gatewayLabel: 'HealthPass Verified Identity' } });
+    }
+
+    if (path === '/api/emergency/find-patient' && method === 'POST') {
+      // The RPC performs provider verification, identity matching, break-glass
+      // checks, limited record selection, and audit logging in one transaction.
+      // Never do a client-side identity lookup before this call.
+      const { data, error } = await client.rpc('emergency_patient_lookup', {
+        p_healthpass_id: String(body.healthPassId || '').trim(),
+        p_date_of_birth: String(body.dateOfBirth || '').trim() || null,
+        p_reason: String(body.reason || '').trim(),
+        p_patient_unable_to_consent: body.patientUnableToConsent === true,
+      });
+      if (error) throw error;
+      return result(true, 200, { summary: data });
     }
 
     if (path === '/api/provider/request-access' && method === 'POST') {

@@ -7,6 +7,7 @@ const migration = (name) => readFileSync(fileURLToPath(new URL(`../../supabase/m
 const core = migration('202610150001_healthpass_core.sql');
 const pharmacist = migration('202610150002_pharmacist_prescription_consent.sql');
 const runtime = migration('202610150003_healthpass_runtime_support.sql');
+const emergency = migration('202610150004_emergency_limited_access.sql');
 
 test('migration order declares the runtime dependencies it extends', () => {
   assert.match(pharmacist, /Depends on 202610150001_healthpass_core\.sql/i);
@@ -17,7 +18,7 @@ test('migration order declares the runtime dependencies it extends', () => {
 });
 
 test('security-definer functions pin an empty search_path', () => {
-  for (const [file, sql] of [['core', core], ['pharmacist', pharmacist], ['runtime', runtime]]) {
+  for (const [file, sql] of [['core', core], ['pharmacist', pharmacist], ['runtime', runtime], ['emergency', emergency]]) {
     const functions = [...sql.matchAll(/create or replace function[\s\S]*?\$\$;/gi)].map((match) => match[0]);
     for (const fn of functions.filter((definition) => /security definer/i.test(definition))) {
       assert.match(fn, /set search_path\s*=\s*''/i, `${file}: SECURITY DEFINER function lacks a pinned search_path`);
@@ -48,4 +49,28 @@ test('consultation writes serialize per patient and compare clinically meaningfu
   }
   assert.match(runtime, /with ordinality[\s\S]*?a\.idx\s*<\s*b\.idx/i);
   assert.equal([...runtime.matchAll(/create or replace function public\.get_consented_prescriptions\(/gi)].length, 1);
+});
+
+test('emergency lookup requires a verified doctor, matching HealthPass ID and birth date, reason, and incapacity attestation', () => {
+  assert.match(emergency, /create or replace function public\.emergency_patient_lookup/i);
+  assert.match(emergency, /security definer[\s\S]*?set search_path\s*=\s*''/i);
+  assert.match(emergency, /auth\.uid\(\) is null[\s\S]*?p\.active and p\.provider_type = 'DOCTOR'/i);
+  assert.match(emergency, /patient\.date_of_birth = p_date_of_birth/i);
+  assert.match(emergency, /patient\.date_of_birth_verified_at is not null/i);
+  assert.match(emergency, /date_of_birth_verified_at[\s\S]*?authenticated patients cannot update this column/i);
+  assert.match(emergency, /length\(trim\(coalesce\(p_reason, ''\)\)\) not between 10 and 500/i);
+  assert.match(emergency, /p_patient_unable_to_consent is distinct from true/i);
+  assert.match(emergency, /raise exception 'Emergency lookup could not be verified'/i);
+});
+
+test('emergency summary is limited, unpersisted in client storage, and audited before release', () => {
+  assert.match(emergency, /create table if not exists public\.emergency_access_events/i);
+  assert.match(emergency, /emergency_access_event_read_patient_or_actor[\s\S]*?patient_user_id = \(select auth\.uid\(\)\) or actor_user_id = \(select auth\.uid\(\)\)/i);
+  assert.match(emergency, /where r\.patient_user_id = v_patient\.user_id and r\.category = any\(v_categories\)[\s\S]*?limit 12/i);
+  assert.match(emergency, /rx\.status = 'ACTIVE'[\s\S]*?limit 5/i);
+  assert.match(emergency, /insert into public\.emergency_access_events[\s\S]*?return jsonb_build_object/i);
+  assert.match(emergency, /actor_user_id, actor_name, reason, categories[\s\S]*?v_actor\.provider_name/i);
+  assert.match(emergency, /'labFindings', v_lab_findings/i);
+  assert.match(emergency, /revoke all on function public\.emergency_patient_lookup\(text, date, text, boolean\) from public, anon/i);
+  assert.match(emergency, /grant execute on function public\.emergency_patient_lookup\(text, date, text, boolean\) to authenticated/i);
 });

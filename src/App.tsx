@@ -1593,7 +1593,7 @@ export default function App() {
           <div className="flex flex-wrap items-center gap-2">
             <span className="text-xs font-bold text-[#0E7C86] inline-flex items-center gap-1">
               <Users className="w-4 h-4" />
-              <span>Choose a patient:</span>
+              <span>{ui('Choose a patient:')}</span>
             </span>
             {DEMO_PATIENTS.map((p) => (
               <button
@@ -1757,7 +1757,7 @@ export default function App() {
         ))}
 
         {pharmacistAccessHistory.length > 0 && <section className="clay-card p-4 space-y-2" aria-label="Pharmacist prescription access history">
-          <h3 className="text-sm font-bold text-[#1F2D3D]">Pharmacist prescription access</h3>
+          <h3 className="text-sm font-bold text-[#1F2D3D]">{ui('Pharmacist prescription access')}</h3>
           {pharmacistAccessHistory.map((grant) => <div key={grant.id} className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-[#DDE7EA] bg-white p-3 text-sm">
             <div><p className="font-bold text-[#1F2D3D]">{grant.doctorName || 'Pharmacist'}</p><p className="text-xs text-[#5B6B7A]">Requested: Prescriptions · Expires: {grant.expiresAt ? new Date(grant.expiresAt).toLocaleString() : 'Not granted'}</p></div>
             <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-700">{grant.status === 'GRANTED' && Date.parse(grant.expiresAt || '') <= Date.now() ? 'EXPIRED' : grant.status}</span>
@@ -1783,10 +1783,10 @@ export default function App() {
             className="w-full my-3 p-4 rounded-2xl border-2 border-[#E8A317] bg-[#FFFBEB] text-left flex flex-wrap items-center justify-between gap-3 hover:bg-[#FEF3C7]"
           >
             <span>
-              <strong className="block text-sm text-[#1F2D3D]">A provider is requesting access</strong>
-              <span className="block mt-1 text-xs text-[#5B6B7A]">Review who requested access and approve or reject from Access Requests. Requested records stay private until you approve.</span>
+              <strong className="block text-sm text-[#1F2D3D]">{ui('A provider is requesting access')}</strong>
+              <span className="block mt-1 text-xs text-[#5B6B7A]">{ui('Review who requested access and approve or reject from Access Requests. Requested records stay private until you approve.')}</span>
             </span>
-            <span className="min-h-[40px] px-4 py-2 rounded-xl bg-[#0E7C86] text-white text-xs font-bold inline-flex items-center">Review request</span>
+            <span className="min-h-[40px] px-4 py-2 rounded-xl bg-[#0E7C86] text-white text-xs font-bold inline-flex items-center">{ui('Review request')}</span>
           </button>
         )}
         <div className="grid grid-cols-3 sm:grid-cols-6 gap-2 no-print">
@@ -1897,7 +1897,7 @@ export default function App() {
                   className="min-h-[40px] px-3.5 py-1.5 clay-btn-primary text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer"
                 >
                   <Upload className="w-3.5 h-3.5" />
-                  <span>Upload Medical Document (OCR)</span>
+                  <span>{ui('Upload Medical Document (OCR)')}</span>
                 </button>
                 <button
                   type="button"
@@ -1913,7 +1913,7 @@ export default function App() {
                   className="min-h-[40px] px-3.5 py-1.5 rounded-xl bg-white border border-[#DDE7EA] hover:bg-[#F5F9FA] text-xs font-bold text-[#0E7C86] inline-flex items-center gap-1.5 cursor-pointer"
                 >
                   <QrCode className="w-3.5 h-3.5" />
-                  <span>Show My QR</span>
+                  <span>{ui('Show My QR')}</span>
                 </button>
               </div>
             </div>
@@ -1921,7 +1921,7 @@ export default function App() {
             <section className="clay-card p-4 sm:p-5 space-y-3">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div><h3 className="text-base font-bold text-[#1F2D3D]">{ui('Patient Health Profile')}</h3><p className="text-xs text-[#5B6B7A]">{ui('Patient-provided details are labeled unverified; unknown information stays unknown.')}</p></div>
-                {!patientProfileEditing && <button type="button" onClick={() => { setPatientProfileDraft({ ...profileFallback, ...savedHealthProfile }); setPatientProfileEditing(true); }} className="min-h-[38px] px-3 rounded-xl border border-[#DDE7EA] bg-white text-xs font-bold text-[#0E7C86]">Edit profile</button>}
+                {!patientProfileEditing && <button type="button" onClick={() => { setPatientProfileDraft({ ...profileFallback, ...savedHealthProfile }); setPatientProfileEditing(true); }} className="min-h-[38px] px-3 rounded-xl border border-[#DDE7EA] bg-white text-xs font-bold text-[#0E7C86]">{ui('Edit profile')}</button>}
               </div>
               {patientProfileEditing ? <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {([['knownAllergies','Known allergies'],['currentMedications','Current medications'],['healthConditions','Existing health conditions'],['pastSurgeries','Relevant past surgeries']] as const).map(([key,label]) => <label key={key} className="text-xs font-semibold text-[#5B6B7A]">{ui(label)}<textarea value={patientProfileDraft?.[key] || ''} onChange={(e) => setPatientProfileDraft((current: any) => ({ ...current, [key]: e.target.value }))} placeholder={ui('Unknown')} rows={2} className="block mt-1 w-full p-2 rounded-xl border border-[#DDE7EA] bg-white text-xs text-[#1F2D3D]" /></label>)}
@@ -1964,7 +1964,7 @@ export default function App() {
                       onChange={(e) => setAllowExternalAi(e.target.checked)}
                       className="accent-[#0E7C86]"
                     />
-                    <span>Allow de-identified cloud assist</span>
+                    <span>{ui('Allow de-identified cloud assist')}</span>
                   </label>
                   <button
                     type="button"
@@ -2124,12 +2124,12 @@ export default function App() {
               </div>
               <div className="flex flex-wrap items-end gap-2">
                 <label className="flex-1 min-w-[220px] text-[11px] font-semibold text-[#5B6B7A]">{tr('searchPrescriptions', lang)}<VoiceSearchInput value={prescriptionSearch} onChange={setPrescriptionSearch} lang={lang} placeholder={tr('searchPrescriptions', lang)} ariaLabel={tr('searchPrescriptions', lang)} /></label>
-                <label className="text-[11px] font-semibold text-[#5B6B7A]">From<input type="date" value={prescriptionDateFrom} onChange={(e) => setPrescriptionDateFrom(e.target.value)} className="block mt-1 min-h-[38px] px-2 rounded-xl border border-[#DDE7EA] bg-white text-xs" /></label>
+                <label className="text-[11px] font-semibold text-[#5B6B7A]">{ui('From')}<input type="date" value={prescriptionDateFrom} onChange={(e) => setPrescriptionDateFrom(e.target.value)} className="block mt-1 min-h-[38px] px-2 rounded-xl border border-[#DDE7EA] bg-white text-xs" /></label>
                 <label className="text-[11px] font-semibold text-[#5B6B7A]">To<input type="date" value={prescriptionDateTo} onChange={(e) => setPrescriptionDateTo(e.target.value)} className="block mt-1 min-h-[38px] px-2 rounded-xl border border-[#DDE7EA] bg-white text-xs" /></label>
-                <label className="text-[11px] font-semibold text-[#5B6B7A]">Status<select value={prescriptionPeriodFilter} onChange={(e) => setPrescriptionPeriodFilter(e.target.value)} className="block mt-1 min-h-[38px] px-2 rounded-xl border border-[#DDE7EA] bg-white text-xs"><option value="ALL">All</option><option value="CURRENT">Current</option><option value="HISTORICAL">Historical</option><option value="UNCLASSIFIED">Unclassified</option></select></label>
+                <label className="text-[11px] font-semibold text-[#5B6B7A]">{ui('Status')}<select value={prescriptionPeriodFilter} onChange={(e) => setPrescriptionPeriodFilter(e.target.value)} className="block mt-1 min-h-[38px] px-2 rounded-xl border border-[#DDE7EA] bg-white text-xs"><option value="ALL">All</option><option value="CURRENT">{ui('Current')}</option><option value="HISTORICAL">Historical</option><option value="UNCLASSIFIED">{ui('Unclassified')}</option></select></label>
                 <label className="text-[11px] font-semibold text-[#5B6B7A]">{tr('medicalCategoryLabel', lang)}<select value={prescriptionCategoryFilter} onChange={(e) => setPrescriptionCategoryFilter(e.target.value)} className="block mt-1 min-h-[38px] max-w-[210px] px-2 rounded-xl border border-[#DDE7EA] bg-white text-xs"><option value="ALL">{tr('allCategories', lang)}</option>{MEDICAL_RECORD_CATEGORIES.map((category) => <option key={category} value={category}>{translateMedicalCategory(category, lang)}</option>)}</select></label>
               </div>
-              {filteredPrescriptionDocuments.length === 0 ? <p className="p-3 rounded-xl bg-[#F5F9FA] text-xs text-[#5B6B7A]">No prescription documents match these filters. Upload a prescription document to add one.</p> : <div className="space-y-3">
+              {filteredPrescriptionDocuments.length === 0 ? <p className="p-3 rounded-xl bg-[#F5F9FA] text-xs text-[#5B6B7A]">{ui('No prescription documents match these filters. Upload a prescription document to add one.')}</p> : <div className="space-y-3">
                 {filteredPrescriptionDocuments.map((report: any) => {
                   const correction = report.prescriptionMetadataCorrections || {};
                   const reportDate = correction.reportDate || report.extractedFields?.reportDate || report.reportDate || '';
@@ -2140,15 +2140,15 @@ export default function App() {
                   return <article key={report.id} className="p-3 rounded-xl border border-[#DDE7EA] bg-[#F5F9FA] space-y-2">
                     <div className="flex flex-wrap items-start justify-between gap-2"><div><h4 className="text-sm font-bold text-[#1F2D3D]">{report.title}</h4><p className="mt-1 text-xs text-[#5B6B7A]">Prescription date: {reportDate || 'Unknown'} · Prescribing provider: {provider}</p><p className="text-[11px] text-[#5B6B7A]">Medical category: {category} · {period === 'CURRENT' ? 'Current prescription' : period === 'HISTORICAL' ? 'Historical prescription' : 'Status not classified'}</p></div><span className="px-2 py-1 rounded-lg bg-white border border-[#DDE7EA] text-[10px] font-bold text-[#5B6B7A]">{report.verificationStatus === 'PATIENT_REVIEWED' || report.confirmedByUser ? 'Patient reviewed' : 'Unverified'}</span></div>
                     <p className="text-[11px] text-[#5B6B7A]">Source: {report.source || 'Unknown'} · Uploaded: {uploadedAt ? new Date(uploadedAt).toLocaleString() : 'Unknown'}</p>
-                    <div className="flex flex-wrap gap-2">{report.fileDataUrl ? <button type="button" onClick={() => openOriginalMedicalFile(report.fileDataUrl)} className="min-h-[34px] px-3 inline-flex items-center rounded-lg border border-[#DDE7EA] bg-white text-xs font-bold text-[#0E7C86]">Open original prescription</button> : <span className="text-[11px] text-[#5B6B7A]">Original file is not available in this record.</span>}<button type="button" onClick={() => { setPrescriptionMetadataDraft({ reportDate, prescribingProvider: provider === 'Unknown' ? '' : provider, medicalCategory: category, prescriptionPeriod: period }); setPrescriptionEditId(report.id); setPrescriptionSaveError(''); }} className="min-h-[34px] px-3 rounded-lg border border-[#DDE7EA] bg-white text-xs font-bold text-[#0E7C86]">Correct details</button></div>
+                    <div className="flex flex-wrap gap-2">{report.fileDataUrl ? <button type="button" onClick={() => openOriginalMedicalFile(report.fileDataUrl)} className="min-h-[34px] px-3 inline-flex items-center rounded-lg border border-[#DDE7EA] bg-white text-xs font-bold text-[#0E7C86]">{ui('Open original prescription')}</button> : <span className="text-[11px] text-[#5B6B7A]">{ui('Original file is not available in this record.')}</span>}<button type="button" onClick={() => { setPrescriptionMetadataDraft({ reportDate, prescribingProvider: provider === 'Unknown' ? '' : provider, medicalCategory: category, prescriptionPeriod: period }); setPrescriptionEditId(report.id); setPrescriptionSaveError(''); }} className="min-h-[34px] px-3 rounded-lg border border-[#DDE7EA] bg-white text-xs font-bold text-[#0E7C86]">{ui('Correct details')}</button></div>
                     {prescriptionEditId === report.id && <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 p-3 rounded-lg border border-[#DDE7EA] bg-white">
-                      <label className="text-[11px] font-semibold text-[#5B6B7A]">Prescription date<input value={prescriptionMetadataDraft.reportDate || ''} onChange={(e) => setPrescriptionMetadataDraft((current: any) => ({ ...current, reportDate: e.target.value }))} placeholder="Unknown" className="block mt-1 w-full min-h-[36px] px-2 rounded-lg border border-[#DDE7EA] text-xs" /></label>
-                      <label className="text-[11px] font-semibold text-[#5B6B7A]">Prescribing provider<input value={prescriptionMetadataDraft.prescribingProvider || ''} onChange={(e) => setPrescriptionMetadataDraft((current: any) => ({ ...current, prescribingProvider: e.target.value }))} placeholder="Unknown" className="block mt-1 w-full min-h-[36px] px-2 rounded-lg border border-[#DDE7EA] text-xs" /></label>
+                      <label className="text-[11px] font-semibold text-[#5B6B7A]">{ui('Prescription date')}<input value={prescriptionMetadataDraft.reportDate || ''} onChange={(e) => setPrescriptionMetadataDraft((current: any) => ({ ...current, reportDate: e.target.value }))} placeholder="Unknown" className="block mt-1 w-full min-h-[36px] px-2 rounded-lg border border-[#DDE7EA] text-xs" /></label>
+                      <label className="text-[11px] font-semibold text-[#5B6B7A]">{ui('Prescribing provider')}<input value={prescriptionMetadataDraft.prescribingProvider || ''} onChange={(e) => setPrescriptionMetadataDraft((current: any) => ({ ...current, prescribingProvider: e.target.value }))} placeholder="Unknown" className="block mt-1 w-full min-h-[36px] px-2 rounded-lg border border-[#DDE7EA] text-xs" /></label>
                       <label className="text-[11px] font-semibold text-[#5B6B7A]">{tr('medicalCategoryLabel', lang)}<select value={prescriptionMetadataDraft.medicalCategory || ''} onChange={(e) => setPrescriptionMetadataDraft((current: any) => ({ ...current, medicalCategory: e.target.value }))} className="block mt-1 w-full min-h-[36px] px-2 rounded-lg border border-[#DDE7EA] text-xs">{MEDICAL_RECORD_CATEGORIES.map((value) => <option key={value} value={value}>{translateMedicalCategory(value, lang)}</option>)}</select></label>
-                      <label className="text-[11px] font-semibold text-[#5B6B7A]">Prescription status<select value={prescriptionMetadataDraft.prescriptionPeriod || 'UNCLASSIFIED'} onChange={(e) => setPrescriptionMetadataDraft((current: any) => ({ ...current, prescriptionPeriod: e.target.value }))} className="block mt-1 w-full min-h-[36px] px-2 rounded-lg border border-[#DDE7EA] text-xs"><option value="UNCLASSIFIED">Unclassified</option><option value="CURRENT">Current</option><option value="HISTORICAL">Historical</option></select></label>
-                      <p className="sm:col-span-2 text-[10px] text-[#5B6B7A]">Corrections update record metadata only. The uploaded prescription and its medicine instructions are preserved.</p>
+                      <label className="text-[11px] font-semibold text-[#5B6B7A]">{ui('Prescription status')}<select value={prescriptionMetadataDraft.prescriptionPeriod || 'UNCLASSIFIED'} onChange={(e) => setPrescriptionMetadataDraft((current: any) => ({ ...current, prescriptionPeriod: e.target.value }))} className="block mt-1 w-full min-h-[36px] px-2 rounded-lg border border-[#DDE7EA] text-xs"><option value="UNCLASSIFIED">{ui('Unclassified')}</option><option value="CURRENT">{ui('Current')}</option><option value="HISTORICAL">Historical</option></select></label>
+                      <p className="sm:col-span-2 text-[10px] text-[#5B6B7A]">{ui('Corrections update record metadata only. The uploaded prescription and its medicine instructions are preserved.')}</p>
                       {prescriptionSaveError && <p role="alert" className="sm:col-span-2 text-xs text-red-700">{prescriptionSaveError}</p>}
-                      <div className="sm:col-span-2 flex gap-2"><button type="button" onClick={() => savePrescriptionMetadata(report.id)} className="min-h-[34px] px-3 rounded-lg clay-btn-primary text-xs font-bold">Save details</button><button type="button" onClick={() => setPrescriptionEditId(null)} className="min-h-[34px] px-3 rounded-lg border border-[#DDE7EA] text-xs font-bold">Cancel</button></div>
+                      <div className="sm:col-span-2 flex gap-2"><button type="button" onClick={() => savePrescriptionMetadata(report.id)} className="min-h-[34px] px-3 rounded-lg clay-btn-primary text-xs font-bold">{ui('Save details')}</button><button type="button" onClick={() => setPrescriptionEditId(null)} className="min-h-[34px] px-3 rounded-lg border border-[#DDE7EA] text-xs font-bold">{ui('Cancel')}</button></div>
                     </div>}
                   </article>;
                 })}
@@ -2213,7 +2213,7 @@ export default function App() {
                   className="min-h-[42px] px-4 py-2 clay-btn-primary text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer"
                 >
                   <Upload className="w-4 h-4" />
-                  <span>Upload Medical Document (OCR)</span>
+                  <span>{ui('Upload Medical Document (OCR)')}</span>
                 </button>
               </div>
             </div>
@@ -2226,7 +2226,7 @@ export default function App() {
                 </label>)}
               </div>
               <div className="flex flex-wrap items-end gap-2">
-                <label className="text-[11px] font-semibold text-[#5B6B7A]">From<input type="date" value={healthReportFromDate} onChange={(e) => { setHealthReportFromDate(e.target.value); setHealthReportPreview(null); }} className="block mt-1 min-h-[38px] px-2 rounded-xl border border-[#DDE7EA] bg-white text-xs" /></label>
+                <label className="text-[11px] font-semibold text-[#5B6B7A]">{ui('From')}<input type="date" value={healthReportFromDate} onChange={(e) => { setHealthReportFromDate(e.target.value); setHealthReportPreview(null); }} className="block mt-1 min-h-[38px] px-2 rounded-xl border border-[#DDE7EA] bg-white text-xs" /></label>
                 <label className="text-[11px] font-semibold text-[#5B6B7A]">To<input type="date" value={healthReportToDate} onChange={(e) => { setHealthReportToDate(e.target.value); setHealthReportPreview(null); }} className="block mt-1 min-h-[38px] px-2 rounded-xl border border-[#DDE7EA] bg-white text-xs" /></label>
                 <button type="button" disabled={healthReportBusy || !healthReportCategories.length} onClick={previewHealthReport} className="min-h-[38px] px-4 rounded-xl border border-[#DDE7EA] bg-white text-xs font-bold text-[#0E7C86] disabled:opacity-50">{healthReportBusy ? 'Preparing…' : ui('Preview selection')}</button>
                 <button type="button" disabled={healthReportBusy || !healthReportCategories.length || !healthReportPreview?.length} onClick={downloadHealthReport} className="min-h-[38px] px-4 rounded-xl clay-btn-primary text-xs font-bold disabled:opacity-50">{ui('Download PDF')}</button>
@@ -2234,9 +2234,9 @@ export default function App() {
               {healthReportError && <p role="alert" className="text-xs text-red-700">{healthReportError}</p>}
               {healthReportPreview && <div className="p-3 rounded-xl border border-[#DDE7EA] bg-[#F5F9FA] space-y-2">
                 <div className="flex flex-wrap items-center justify-between gap-2"><h4 className="text-xs font-bold text-[#1F2D3D]">Preview · {healthReportPreview.length} record{healthReportPreview.length === 1 ? '' : 's'}</h4><span className="text-[10px] text-[#5B6B7A]">Missing details display as Unknown; unverified status is retained.</span></div>
-                {healthReportPreview.length ? <div className="max-h-64 overflow-y-auto space-y-2">{healthReportPreview.map((entry, index) => <div key={`${entry.id || entry.title}-${index}`} className="p-2 rounded-lg bg-white border border-[#DDE7EA] text-xs"><p className="font-bold text-[#1F2D3D]">{entry.title || 'Untitled record'} · {entry.category}</p><p className="mt-1 text-[#5B6B7A]">Date: {entry.date || 'Unknown'} · Provider: {entry.provider || 'Unknown'}</p><p className="text-[#5B6B7A]">Source: {entry.source || 'Unknown'} · Verification: {entry.verificationStatus || 'Unverified'}</p></div>)}</div> : <p className="text-xs text-[#5B6B7A]">No records match the selected categories and date range.</p>}
+                {healthReportPreview.length ? <div className="max-h-64 overflow-y-auto space-y-2">{healthReportPreview.map((entry, index) => <div key={`${entry.id || entry.title}-${index}`} className="p-2 rounded-lg bg-white border border-[#DDE7EA] text-xs"><p className="font-bold text-[#1F2D3D]">{entry.title || 'Untitled record'} · {entry.category}</p><p className="mt-1 text-[#5B6B7A]">Date: {entry.date || 'Unknown'} · Provider: {entry.provider || 'Unknown'}</p><p className="text-[#5B6B7A]">Source: {entry.source || 'Unknown'} · Verification: {entry.verificationStatus || 'Unverified'}</p></div>)}</div> : <p className="text-xs text-[#5B6B7A]">{ui('No records match the selected categories and date range.')}</p>}
               </div>}
-              <p className="text-[10px] text-[#5B6B7A]">The PDF is generated in this browser from records you are authorized to access. It is not published as a public link.</p>
+              <p className="text-[10px] text-[#5B6B7A]">{ui('The PDF is generated in this browser from records you are authorized to access. It is not published as a public link.')}</p>
             </section>
 
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2.5">
@@ -2266,7 +2266,7 @@ export default function App() {
               <div className="relative flex-1 min-w-[190px]">
                 <VoiceSearchInput value={medicalRecordSearch} onChange={setMedicalRecordSearch} lang={lang} placeholder={tr('searchMedicalRecords', lang)} ariaLabel={tr('searchMedicalRecords', lang)} />
               </div>
-              <label className="text-xs font-semibold text-[#5B6B7A]">From <input type="date" value={medicalRecordDateFrom} onChange={(e) => setMedicalRecordDateFrom(e.target.value)} className="block mt-1 min-h-[38px] px-2 rounded-xl border border-[#DDE7EA] text-xs text-[#1F2D3D]" /></label>
+              <label className="text-xs font-semibold text-[#5B6B7A]">{ui('From')} <input type="date" value={medicalRecordDateFrom} onChange={(e) => setMedicalRecordDateFrom(e.target.value)} className="block mt-1 min-h-[38px] px-2 rounded-xl border border-[#DDE7EA] text-xs text-[#1F2D3D]" /></label>
               <label className="text-xs font-semibold text-[#5B6B7A]">To <input type="date" value={medicalRecordDateTo} onChange={(e) => setMedicalRecordDateTo(e.target.value)} className="block mt-1 min-h-[38px] px-2 rounded-xl border border-[#DDE7EA] text-xs text-[#1F2D3D]" /></label>
               {(selectedMedicalRecordCategory || medicalRecordSearch || medicalRecordDateFrom || medicalRecordDateTo) && (
                 <button type="button" onClick={() => { setSelectedMedicalRecordCategory(null); setMedicalRecordSearch(''); setMedicalRecordDateFrom(''); setMedicalRecordDateTo(''); }} className="min-h-[38px] px-3 rounded-xl border border-[#DDE7EA] bg-white text-xs font-bold text-[#0E7C86] cursor-pointer">
@@ -2277,7 +2277,7 @@ export default function App() {
 
             <div className="space-y-3">
               {filteredMedicalRecords.length === 0 ? (
-                <div className="clay-card p-5 text-center text-sm text-[#5B6B7A]">No medical records match these filters.</div>
+                <div className="clay-card p-5 text-center text-sm text-[#5B6B7A]">{ui('No medical records match these filters.')}</div>
               ) : filteredMedicalRecords.map((rep: any) => (
                 <div key={rep.id} className="clay-card p-4 sm:p-5 space-y-2.5">
                   <div className="flex flex-wrap items-start justify-between gap-2">
@@ -2312,8 +2312,8 @@ export default function App() {
                   </div>
                   {rep.sourceRecordType === 'report' && (
                     <div className="flex flex-wrap items-center gap-2">
-                      {rep.fileDataUrl && <button type="button" onClick={() => openOriginalMedicalFile(rep.fileDataUrl)} className="min-h-[36px] px-3 inline-flex items-center rounded-xl border border-[#DDE7EA] bg-white text-xs font-bold text-[#0E7C86]">View original report</button>}
-                      {rep.source === 'PATIENT_UPLOAD' && <button type="button" onClick={() => handleRemovePatientReport(rep.id, rep.title || 'this document')} className="min-h-[36px] px-3 rounded-xl border border-rose-200 bg-white text-xs font-bold text-rose-700 hover:bg-rose-50">Remove my upload</button>}
+                      {rep.fileDataUrl && <button type="button" onClick={() => openOriginalMedicalFile(rep.fileDataUrl)} className="min-h-[36px] px-3 inline-flex items-center rounded-xl border border-[#DDE7EA] bg-white text-xs font-bold text-[#0E7C86]">{ui('View original report')}</button>}
+                      {rep.source === 'PATIENT_UPLOAD' && <button type="button" onClick={() => handleRemovePatientReport(rep.id, rep.title || 'this document')} className="min-h-[36px] px-3 rounded-xl border border-rose-200 bg-white text-xs font-bold text-rose-700 hover:bg-rose-50">{ui('Remove my upload')}</button>}
                       {(rep.uploaderRole === 'doctor' || rep.source === 'DOCTOR_UPLOAD' || rep.source === 'PROVIDER_UPLOAD') ? <>
                         <label className="inline-flex items-center gap-2 text-xs font-semibold text-[#1F2D3D]">
                           {ui('Explain in')}
@@ -2358,12 +2358,12 @@ export default function App() {
                     <section className="p-3 rounded-xl border border-[#DDE7EA] bg-white space-y-2" aria-label="Medical report summary">
                       <h5 className="text-sm font-bold text-[#1F2D3D]">{reportSummaries[rep.id].aiGenerated ? 'AI-generated explanation' : 'Extracted report facts'}</h5>
                       {reportSummaries[rep.id].readable ? <>
-                        <div><p className="text-xs font-bold text-[#0E7C86]">Extracted facts</p><ul className="mt-1 list-disc pl-5 space-y-1 text-xs text-[#1F2D3D]">{reportSummaries[rep.id].facts.map((fact: string, index: number) => <li key={index} className="whitespace-pre-wrap">{fact}</li>)}</ul></div>
-                        <div><p className="text-xs font-bold text-[#0E7C86]">Plain-language explanation</p><p className="mt-1 text-xs text-[#1F2D3D]">{reportSummaries[rep.id].explanation}</p></div>
-                        {reportSummaries[rep.id].questions?.length > 0 && <div><p className="text-xs font-bold text-[#0E7C86]">Questions to ask your doctor</p><ul className="mt-1 list-disc pl-5 text-xs text-[#1F2D3D]">{reportSummaries[rep.id].questions.map((question: string, index: number) => <li key={index}>{question}</li>)}</ul></div>}
+                        <div><p className="text-xs font-bold text-[#0E7C86]">{ui('Extracted facts')}</p><ul className="mt-1 list-disc pl-5 space-y-1 text-xs text-[#1F2D3D]">{reportSummaries[rep.id].facts.map((fact: string, index: number) => <li key={index} className="whitespace-pre-wrap">{fact}</li>)}</ul></div>
+                        <div><p className="text-xs font-bold text-[#0E7C86]">{ui('Plain-language explanation')}</p><p className="mt-1 text-xs text-[#1F2D3D]">{reportSummaries[rep.id].explanation}</p></div>
+                        {reportSummaries[rep.id].questions?.length > 0 && <div><p className="text-xs font-bold text-[#0E7C86]">{ui('Questions to ask your doctor')}</p><ul className="mt-1 list-disc pl-5 text-xs text-[#1F2D3D]">{reportSummaries[rep.id].questions.map((question: string, index: number) => <li key={index}>{question}</li>)}</ul></div>}
                         {reportSummaries[rep.id].aiGenerated && <SpeechButton text={reportSummaries[rep.id].readAloudText || reportSummaries[rep.id].explanation} lang={reportExplanationLanguage === 'te' ? 'TE' : 'EN'} label="Read explanation aloud" />}
-                        <p className="text-[11px] text-[#5B6B7A]">Informational only; this summary does not replace interpretation by a healthcare professional. No diagnosis or treatment advice is provided.</p>
-                      </> : <p className="text-xs text-[#5B6B7A]">Could not reliably read this report, so no summary was generated. You can still open the original report for review.</p>}
+                        <p className="text-[11px] text-[#5B6B7A]">{ui('Informational only; this summary does not replace interpretation by a healthcare professional. No diagnosis or treatment advice is provided.')}</p>
+                      </> : <p className="text-xs text-[#5B6B7A]">{ui('Could not reliably read this report, so no summary was generated. You can still open the original report for review.')}</p>}
                     </section>
                   )}
                   {rep.sourceRecordType === 'report' && (rep.category === 'Lab reports' || rep.extractedFields?.labValues?.length > 0) && <LabReportExplanationPanel report={rep} lang={lang} />}
@@ -2475,15 +2475,17 @@ export default function App() {
             <div className="clay-card p-4 sm:p-5 flex flex-wrap items-center justify-between gap-3">
               <div>
                 <h3 className="text-base sm:text-lg font-bold text-[#1F2D3D]">
-                  Tamper-Evident Plain-Language Audit Trail
+                  {ui('Access History')}
                 </h3>
                 <p className="text-xs text-[#5B6B7A]">
-                  Simulated access events are saved locally in this browser. This timeline is not tamper-proof or server-verified.
+                  {walletData?.auditChainVerification?.simulated
+                    ? ui('Simulated access events are saved locally in this browser. This timeline is not tamper-proof or server-verified.')
+                    : ui('Server-recorded events, including emergency access, appear here for your review.')}
                 </p>
               </div>
               <div className="flex flex-wrap gap-2">
                 <button type="button" onClick={() => setShowDoctorReportOcrModal(true)} className="min-h-[48px] px-5 py-2.5 rounded-xl border border-[#DDE7EA] bg-white text-[#0E7C86] font-bold text-sm inline-flex items-center gap-2 cursor-pointer">
-                  <Upload className="w-4 h-4" /><span>Upload report</span>
+                  <Upload className="w-4 h-4" /><span>{ui('Upload report')}</span>
                 </button>
                 <button
                   type="button"
@@ -2627,7 +2629,7 @@ export default function App() {
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div className="text-xs font-bold text-[#1F2D3D] flex items-center gap-1.5">
               <QrCode className="w-4 h-4 text-[#0E7C86]" />
-              <span>Find a patient</span>
+              <span>{ui('Find a patient')}</span>
             </div>
             <button
               type="button"
@@ -2635,7 +2637,7 @@ export default function App() {
               className="min-h-[38px] px-3.5 py-1.5 rounded-xl bg-[#0E7C86] text-white text-xs font-bold inline-flex items-center gap-1.5 hover:bg-[#0A626A] cursor-pointer"
             >
               <Camera className="w-3.5 h-3.5" />
-              <span>Scan Patient QR</span>
+              <span>{ui('Scan Patient QR')}</span>
             </button>
           </div>
 
@@ -2679,7 +2681,7 @@ export default function App() {
                 </div>
                 <span className="px-3 py-1.5 rounded-xl bg-[#FEF2F2] border border-[#FECACA] text-xs font-bold text-[#D32F2F] inline-flex items-center gap-1.5">
                   <Lock className="w-3.5 h-3.5" />
-                  <span>Clinical Data Locked</span>
+                  <span>{ui('Clinical Data Locked')}</span>
                 </span>
               </div>
             )}
@@ -2710,7 +2712,7 @@ export default function App() {
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div className="sm:col-span-2">
-                  <label className="block text-xs font-bold text-[#1F2D3D] mb-1">Purpose</label>
+                  <label className="block text-xs font-bold text-[#1F2D3D] mb-1">{ui('Purpose')}</label>
                   <input
                     type="text"
                     value={requestPurpose}
@@ -2719,7 +2721,7 @@ export default function App() {
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-[#1F2D3D] mb-1">Duration</label>
+                  <label className="block text-xs font-bold text-[#1F2D3D] mb-1">{ui('Duration')}</label>
                   <select
                     value={requestDurationHours}
                     onChange={(e) => setRequestDurationHours(Number(e.target.value))}
@@ -2772,7 +2774,7 @@ export default function App() {
             <PatientBanner patient={doctorRecord.patient} recordOpenSeconds={recordOpenSeconds} lang={lang} />
 
             {doctorRecord.healthProfileSection?.shared && <section className="clay-card p-4 space-y-2">
-              <h3 className="text-sm font-bold text-[#1F2D3D]">Patient Health Profile · Consent-shared details</h3>
+              <h3 className="text-sm font-bold text-[#1F2D3D]">{ui('Patient Health Profile · Consent-shared details')}</h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
                 {([['Known allergies',doctorRecord.healthProfileSection.profile?.knownAllergies],['Current medications',doctorRecord.healthProfileSection.profile?.currentMedications],['Existing health conditions',doctorRecord.healthProfileSection.profile?.healthConditions],['Relevant past surgeries',doctorRecord.healthProfileSection.profile?.pastSurgeries],['Blood group',doctorRecord.healthProfileSection.profile?.bloodGroup],['Emergency contact',[doctorRecord.healthProfileSection.profile?.emergencyContactName,doctorRecord.healthProfileSection.profile?.emergencyContactRelation,doctorRecord.healthProfileSection.profile?.emergencyContactPhone].filter(Boolean).join(' · ')]] as const).filter(([,value]) => value).map(([label,value]) => <div key={label} className="p-2 rounded-lg bg-[#F5F9FA] border border-[#DDE7EA]"><b>{label}: </b>{value}</div>)}
               </div>
@@ -2833,7 +2835,7 @@ export default function App() {
                 <FileText className="w-4 h-4 text-[#0E7C86]" />
                 <span>3. Categorized Medical Records</span>
               </h3>
-              <p className="text-xs text-[#5B6B7A]">Categories marked approved were shared by the patient for this session.</p>
+              <p className="text-xs text-[#5B6B7A]">{ui('Categories marked approved were shared by the patient for this session.')}</p>
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2.5">
                 {MEDICAL_RECORD_CATEGORIES.map((category) => {
                   const Icon = MEDICAL_CATEGORY_ICON[category] || FileText;
@@ -2865,7 +2867,7 @@ export default function App() {
                 <h4 className="text-sm font-bold text-[#1F2D3D]">
                   {selectedDoctorRecordCategory || 'All approved categories'}
                 </h4>
-                {selectedDoctorRecordCategory && <button type="button" onClick={() => setSelectedDoctorRecordCategory(null)} className="min-h-[34px] px-3 rounded-xl border border-[#DDE7EA] bg-white text-xs font-bold text-[#0E7C86] cursor-pointer">Show all approved</button>}
+                {selectedDoctorRecordCategory && <button type="button" onClick={() => setSelectedDoctorRecordCategory(null)} className="min-h-[34px] px-3 rounded-xl border border-[#DDE7EA] bg-white text-xs font-bold text-[#0E7C86] cursor-pointer">{ui('Show all approved')}</button>}
               </div>
               {filteredDoctorMedicalRecords.length ? (
                 <div className="space-y-3">
@@ -2937,17 +2939,17 @@ export default function App() {
               </>}
             </div>
             <div className="relative">
-              <button type="button" onClick={() => { setShowMoreRolesDropdown(!showMoreRolesDropdown); setShowLanguageDropdown(false); }} aria-expanded={showMoreRolesDropdown} aria-haspopup="menu" className="hp-header-control"><MoreHorizontal className="w-5 h-5 text-[#0E7C86]" /><span className="hidden sm:inline">More</span><ChevronDown className="w-3 h-3 text-slate-400" /></button>
+              <button type="button" onClick={() => { setShowMoreRolesDropdown(!showMoreRolesDropdown); setShowLanguageDropdown(false); }} aria-expanded={showMoreRolesDropdown} aria-haspopup="menu" className="hp-header-control"><MoreHorizontal className="w-5 h-5 text-[#0E7C86]" /><span className="hidden sm:inline">{ui('More')}</span><ChevronDown className="w-3 h-3 text-slate-400" /></button>
               {showMoreRolesDropdown && <>
                 <button type="button" aria-label="Close more menu" className="fixed inset-0 z-40 cursor-default" onClick={() => setShowMoreRolesDropdown(false)} />
                 <div role="menu" aria-label="More options" className="absolute top-full right-0 mt-2 w-64 max-h-[75vh] overflow-y-auto bg-white rounded-2xl shadow-xl border border-slate-200 p-2 z-50">
                   {loggedInUser && <div className="px-3 py-2 border-b border-slate-100 mb-1"><div className="text-sm font-bold text-slate-900">{loggedInUser.name}</div><div className="text-xs text-slate-500 truncate">{loggedInUser.email}</div></div>}
                   <button role="menuitem" type="button" onClick={() => { handleNavigateHowItWorks(); setShowMoreRolesDropdown(false); }} className="hp-menu-item">{tr('howItWorks', lang)}</button>
                   <button role="menuitem" type="button" onClick={() => { setMode('SPLIT_DEMO'); setShowMoreRolesDropdown(false); setMobileMenuOpen(false); }} className="hp-menu-item">{tr('splitScreenMode', lang)}</button>
-                  <button role="menuitem" type="button" onClick={() => { setShowMoreRolesDropdown(false); void handleResetDemo('CLEAN_LOCKED'); }} className="hp-menu-item text-rose-700"><RefreshCw className="w-4 h-4" /> Reset demo data</button>
-                  <div className="px-3 pt-2 pb-1 text-xs font-bold text-slate-400 uppercase">Other portals</div>
+                  <button role="menuitem" type="button" onClick={() => { setShowMoreRolesDropdown(false); void handleResetDemo('CLEAN_LOCKED'); }} className="hp-menu-item text-rose-700"><RefreshCw className="w-4 h-4" /> {ui('Reset demo data')}</button>
+                  <div className="px-3 pt-2 pb-1 text-xs font-bold text-slate-400 uppercase">{ui('Other portals')}</div>
                   {([['PHARMACY', 'Jan Aushadhi Pharmacy'], ['LAB', 'Diagnostic Lab'], ['ADMIN', 'Registry Admin']] as const).map(([portal, label]) => <button role="menuitem" key={portal} type="button" onClick={() => { setMode(portal); setShowMoreRolesDropdown(false); setMobileMenuOpen(false); }} className="hp-menu-item">{label}</button>)}
-                  {!loggedInUser ? <button role="menuitem" type="button" onClick={() => { setShowLoginModal(true); setShowMoreRolesDropdown(false); }} className="hp-menu-item text-[#0E7C86]">Sign in</button> : <button role="menuitem" type="button" onClick={() => { setShowMoreRolesDropdown(false); void handleLogout(); }} className="hp-menu-item text-rose-700">{<LogOut className="w-4 h-4" />} Sign out</button>}
+                  {!loggedInUser ? <button role="menuitem" type="button" onClick={() => { setShowLoginModal(true); setShowMoreRolesDropdown(false); }} className="hp-menu-item text-[#0E7C86]">{ui('Sign in')}</button> : <button role="menuitem" type="button" onClick={() => { setShowMoreRolesDropdown(false); void handleLogout(); }} className="hp-menu-item text-rose-700">{<LogOut className="w-4 h-4" />} Sign out</button>}
                 </div>
               </>}
             </div>
@@ -3131,18 +3133,18 @@ export default function App() {
             <section className="rounded-2xl border border-teal-100 bg-gradient-to-r from-white to-teal-50 p-5 sm:p-6">
               <div className="flex flex-wrap items-center justify-between gap-4">
                 <div>
-                  <p className="text-sm font-semibold text-[#0E7C86]">PATIENT</p>
-                  <h1 className="mt-1 text-2xl font-bold text-[#1F2D3D]">Your health dashboard</h1>
-                  <p className="mt-1 text-sm text-[#5B6B7A]">Your records, medicines, and sharing choices in one place.</p>
+                  <p className="text-sm font-semibold text-[#0E7C86]">{ui('PATIENT')}</p>
+                  <h1 className="mt-1 text-2xl font-bold text-[#1F2D3D]">{ui('Your health dashboard')}</h1>
+                  <p className="mt-1 text-sm text-[#5B6B7A]">{ui('Your records, medicines, and sharing choices in one place.')}</p>
                 </div>
                 <button type="button" onClick={() => setPatientTab('CONSENT')} className="min-h-10 rounded-xl border border-teal-200 bg-white px-4 py-2 text-sm font-bold text-[#0E7C86] hover:bg-teal-50 cursor-pointer inline-flex items-center gap-2">
                   <ShieldCheck className="h-4 w-4" /> Manage sharing
                 </button>
               </div>
               <div className="mt-5 grid gap-3 sm:grid-cols-3">
-                <div className="rounded-xl bg-white/90 p-3"><div className="text-xs text-[#5B6B7A]">Visits on record</div><div className="mt-1 text-xl font-bold text-[#1F2D3D]">{walletData?.record?.visits?.length || 0}</div></div>
-                <div className="rounded-xl bg-white/90 p-3"><div className="text-xs text-[#5B6B7A]">Current medicines</div><div className="mt-1 text-xl font-bold text-[#1F2D3D]">{walletData?.record?.medicines?.filter((medicine: any) => medicine.computedStatus === 'ACTIVE').length || 0}</div></div>
-                <div className="rounded-xl bg-white/90 p-3"><div className="text-xs text-[#5B6B7A]">Requests to review</div><div className="mt-1 text-xl font-bold text-[#1F2D3D]">{walletData?.grants?.filter((grant: any) => grant.status === 'PENDING').length || 0}</div></div>
+                <div className="rounded-xl bg-white/90 p-3"><div className="text-xs text-[#5B6B7A]">{ui('Visits on record')}</div><div className="mt-1 text-xl font-bold text-[#1F2D3D]">{walletData?.record?.visits?.length || 0}</div></div>
+                <div className="rounded-xl bg-white/90 p-3"><div className="text-xs text-[#5B6B7A]">{ui('Current medicines')}</div><div className="mt-1 text-xl font-bold text-[#1F2D3D]">{walletData?.record?.medicines?.filter((medicine: any) => medicine.computedStatus === 'ACTIVE').length || 0}</div></div>
+                <div className="rounded-xl bg-white/90 p-3"><div className="text-xs text-[#5B6B7A]">{ui('Requests to review')}</div><div className="mt-1 text-xl font-bold text-[#1F2D3D]">{walletData?.grants?.filter((grant: any) => grant.status === 'PENDING').length || 0}</div></div>
               </div>
             </section>
             {renderPatientPane(false)}
@@ -3153,9 +3155,9 @@ export default function App() {
         {mode === 'DOCTOR' && (
           <div className="mx-auto max-w-6xl space-y-5">
             <section className="rounded-2xl border border-blue-100 bg-gradient-to-r from-white to-blue-50 p-5 sm:p-6">
-              <p className="text-sm font-semibold text-[#1769AA]">CARE TEAM</p>
-              <h1 className="mt-1 text-2xl font-bold text-[#1F2D3D]">Doctor dashboard</h1>
-              <p className="mt-1 text-sm text-[#5B6B7A]">Find a patient, request permission, and review the information shared with you.</p>
+              <p className="text-sm font-semibold text-[#1769AA]">{ui('CARE TEAM')}</p>
+              <h1 className="mt-1 text-2xl font-bold text-[#1F2D3D]">{ui('Doctor dashboard')}</h1>
+              <p className="mt-1 text-sm text-[#5B6B7A]">{ui('Find a patient, request permission, and review the information shared with you.')}</p>
             </section>
             {renderDoctorPane()}
           </div>
@@ -3179,20 +3181,20 @@ export default function App() {
           <div className="max-w-4xl mx-auto space-y-5">
             <div className="clay-card border-l-4 border-l-[#0E7C86] p-5 space-y-2">
               <span className="text-xs font-extrabold text-[#0E7C86]">PHARMACIST DASHBOARD · DEMO ONLY</span>
-              <h2 className="text-xl font-bold text-[#1F2D3D]">Prescription access</h2>
-              <p className="text-sm text-[#5B6B7A]">A HealthPass ID identifies a patient; it does not give access. The patient must approve before prescriptions are shown.</p>
+              <h2 className="text-xl font-bold text-[#1F2D3D]">{ui('Prescription access')}</h2>
+              <p className="text-sm text-[#5B6B7A]">{ui('A HealthPass ID identifies a patient; it does not give access. The patient must approve before prescriptions are shown.')}</p>
               <p className="text-xs font-semibold text-amber-800">The pharmacist demo account is fictional and is not verified for real patient access.</p>
             </div>
             {loggedInUser?.role === 'pharmacy' ? <form onSubmit={handlePharmacyRequestAccess} className="clay-card p-4 sm:p-5 space-y-3">
-              <label htmlFor="pharmacy-healthpass-id" className="block text-sm font-bold text-[#1F2D3D]">Patient HealthPass ID</label>
+              <label htmlFor="pharmacy-healthpass-id" className="block text-sm font-bold text-[#1F2D3D]">{ui('Patient HealthPass ID')}</label>
               <div className="flex flex-col gap-2 sm:flex-row">
                 <input id="pharmacy-healthpass-id" value={pharmacyLookupQuery} onChange={(event) => setPharmacyLookupQuery(event.target.value)} placeholder="Example: HP-DEMO-0417" autoComplete="off" required className="min-h-11 min-w-0 flex-1 rounded-xl border border-[#DDE7EA] bg-white px-3 text-sm font-mono" />
                 <button type="submit" className="min-h-11 rounded-xl bg-[#0E7C86] px-4 text-sm font-bold text-white hover:bg-[#0A626A]">Find patient &amp; request access</button>
               </div>
-              <p className="text-xs text-[#5B6B7A]">The request is limited to prescriptions. No allergy, lab, or medical-history access is requested.</p>
+              <p className="text-xs text-[#5B6B7A]">{ui('The request is limited to prescriptions. No allergy, lab, or medical-history access is requested.')}</p>
             </form> : <div className="clay-card flex flex-wrap items-center justify-between gap-3 p-4">
               <p className="text-sm text-[#5B6B7A]">Sign in with the existing pharmacist demo account to try this workflow.</p>
-              <button type="button" onClick={() => { setLoginEmail('pharmacy@demo.com'); setLoginPassword('Demo@123'); setShowLoginModal(true); }} className="min-h-11 rounded-xl bg-[#0E7C86] px-4 text-sm font-bold text-white hover:bg-[#0A626A]">Sign in as pharmacist</button>
+              <button type="button" onClick={() => { setLoginEmail('pharmacy@demo.com'); setLoginPassword('Demo@123'); setShowLoginModal(true); }} className="min-h-11 rounded-xl bg-[#0E7C86] px-4 text-sm font-bold text-white hover:bg-[#0A626A]">{ui('Sign in as pharmacist')}</button>
             </div>}
             {pharmacyData?.error && <div role="alert" className="rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm font-semibold text-rose-800">{pharmacyData.error}</div>}
             {pharmacyData?.patient && <section className="space-y-4" aria-live="polite">
@@ -3203,12 +3205,12 @@ export default function App() {
               {pharmacyData.accessStatus !== 'ACTIVE' ? <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950">
                 {pharmacyData.accessStatus === 'PENDING' ? 'The patient has not decided yet. Prescription details remain hidden.' : pharmacyData.accessStatus === 'REJECTED' ? 'The patient rejected this request. Prescription details remain hidden.' : pharmacyData.accessStatus === 'REVOKED' ? 'The patient revoked access. Prescription details are no longer available.' : pharmacyData.accessStatus === 'EXPIRED' ? 'The consent period ended. Request access again if needed.' : 'Prescription details are unavailable until the patient approves a request.'}
               </div> : <>
-                <div className="flex flex-wrap items-center justify-between gap-2"><h3 className="text-lg font-bold text-[#1F2D3D]">Prescriptions</h3><p className="text-xs font-semibold text-[#5B6B7A]">Consent expires: {pharmacyData.grant?.expiresAt ? new Date(pharmacyData.grant.expiresAt).toLocaleString() : 'Not available'}</p></div>
+                <div className="flex flex-wrap items-center justify-between gap-2"><h3 className="text-lg font-bold text-[#1F2D3D]">{ui('Prescriptions')}</h3><p className="text-xs font-semibold text-[#5B6B7A]">Consent expires: {pharmacyData.grant?.expiresAt ? new Date(pharmacyData.grant.expiresAt).toLocaleString() : 'Not available'}</p></div>
                 {pharmacyData.prescriptions?.length ? pharmacyData.prescriptions.map((rx: any) => <article key={rx.id} className="clay-card p-4 space-y-3">
                   <div className="flex flex-wrap items-start justify-between gap-2"><div><h4 className="text-base font-bold text-[#1F2D3D]">{rx.medicationName || 'Medicine name not recorded'} {rx.strength && <span className="font-mono text-[#0E7C86]">{rx.strength}</span>}</h4><p className="text-xs text-[#5B6B7A]">Prescribed by {rx.prescribingClinician || 'Not recorded'} · {rx.prescriptionDate ? new Date(rx.prescriptionDate).toLocaleDateString() : 'Date not recorded'}</p></div><span className={`rounded-full px-2.5 py-1 text-xs font-bold ${rx.status === 'ACTIVE' ? 'bg-emerald-50 text-emerald-800' : rx.status === 'EXPIRED' ? 'bg-amber-50 text-amber-800' : rx.status === 'CANCELLED' || rx.status === 'DISCONTINUED' ? 'bg-slate-100 text-slate-700' : 'bg-rose-50 text-rose-700'}`}>{rx.status}</span></div>
                   <dl className="grid gap-2 text-sm sm:grid-cols-2">{([['Dosage', rx.dosage], ['Route', rx.route], ['Frequency', typeof rx.frequency === 'object' && rx.frequency ? Object.entries(rx.frequency).filter(([, count]) => Number(count) > 0).map(([time, count]) => `${time}: ${count}`).join(', ') : rx.frequency], ['Duration', rx.duration], ['Valid until', rx.validUntil ? new Date(rx.validUntil).toLocaleDateString() : 'Not recorded'], ['Instructions', rx.instructions]] as const).map(([label, value]) => <div key={label} className="rounded-lg bg-[#F5F9FA] px-3 py-2"><dt className="text-xs font-bold text-[#5B6B7A]">{label}</dt><dd className="mt-0.5 text-[#1F2D3D]">{value || 'Not recorded'}</dd></div>)}</dl>
                   {!rx.validUntil && <p className="text-xs font-semibold text-amber-800">Expiry information is not recorded for this prescription.</p>}
-                </article>) : <div className="clay-card p-4 text-sm text-[#5B6B7A]">No prescription records are available for this patient.</div>}
+                </article>) : <div className="clay-card p-4 text-sm text-[#5B6B7A]">{ui('No prescription records are available for this patient.')}</div>}
                 <p className="text-xs text-[#5B6B7A]">Viewing a prescription does not record a dispensing event. This dashboard does not change prescriptions.</p>
               </>}
             </section>}
@@ -3225,11 +3227,11 @@ export default function App() {
               <h2 className="text-xl font-bold text-[#1F2D3D]">
                 Add a test result
               </h2>
-              <p className="text-sm text-[#5B6B7A]">Find the patient by HealthPass ID, then add the result to their records. Looking up an ID does not show you their other health information.</p>
+              <p className="text-sm text-[#5B6B7A]">{ui('Find the patient by HealthPass ID, then add the result to their records. Looking up an ID does not show you their other health information.')}</p>
             </div>
             {loggedInUser?.role !== 'lab' ? <div role="alert" className="clay-card p-4 text-sm font-semibold text-rose-700">Sign in with a diagnostic lab account to add a report.</div> : <>
             <form onSubmit={handleLabPatientLookup} className="clay-card p-5 space-y-3">
-              <label htmlFor="lab-patient-id" className="block text-sm font-bold text-[#1F2D3D]">Patient HealthPass ID</label>
+              <label htmlFor="lab-patient-id" className="block text-sm font-bold text-[#1F2D3D]">{ui('Patient HealthPass ID')}</label>
               <div className="flex flex-col gap-2 sm:flex-row">
                 <input id="lab-patient-id" type="text" required value={labHealthPassId} onChange={(e) => { setLabHealthPassId(e.target.value); setLabPatientIdentity(null); setLabAccessStatus('NONE'); }} placeholder="For example, HP-DEMO-0417" autoComplete="off" className="w-full min-h-[44px] px-3 rounded-xl border border-[#DDE7EA] text-sm" />
                 <button type="submit" disabled={labLookupBusy || !labHealthPassId.trim()} className="min-h-[44px] px-5 rounded-xl bg-[#1769AA] text-white text-sm font-bold disabled:opacity-50">{labLookupBusy ? 'Checking…' : 'Find patient'}</button>
@@ -3348,11 +3350,11 @@ export default function App() {
 
             <form onSubmit={handleLoginSubmit} className="space-y-3">
               {isCreatingAccount && <div>
-                <label className="block text-xs font-bold text-[#1F2D3D] mb-1">Your name</label>
+                <label className="block text-xs font-bold text-[#1F2D3D] mb-1">{ui('Your name')}</label>
                 <input type="text" required maxLength={200} value={registrationName} onChange={(e) => setRegistrationName(e.target.value)} className="w-full min-h-[42px] px-3 py-1.5 rounded-xl border border-[#DDE7EA] text-sm" />
               </div>}
               <div>
-                <label className="block text-xs font-bold text-[#1F2D3D] mb-1">Email Address</label>
+                <label className="block text-xs font-bold text-[#1F2D3D] mb-1">{ui('Email Address')}</label>
                 <input
                   type="email"
                   required
@@ -3362,7 +3364,7 @@ export default function App() {
                 />
               </div>
               <div>
-                <label className="block text-xs font-bold text-[#1F2D3D] mb-1">Password</label>
+                <label className="block text-xs font-bold text-[#1F2D3D] mb-1">{ui('Password')}</label>
                 <input
                   type="password"
                   required
@@ -3384,7 +3386,7 @@ export default function App() {
             </button>}
 
             {!isCreatingAccount && <div className="pt-3 border-t border-[#DDE7EA] space-y-2">
-              <div className="text-xs font-bold text-[#5B6B7A]">Fictional demo profiles (simulated sign-in · password: <span className="font-mono">Demo@123</span>)</div>
+              <div className="text-xs font-bold text-[#5B6B7A]">{ui('Fictional demo profiles (simulated sign-in · password:')} <span className="font-mono">Demo@123</span>)</div>
               <div className="space-y-1.5">
                 {DEMO_PATIENTS.map((demoPatient) => <button key={demoPatient.id} type="button" onClick={() => { setLoginEmail(demoPatient.email); setLoginPassword('Demo@123'); }} className="w-full p-2 rounded-xl bg-[#F5F9FA] border border-[#DDE7EA] text-left text-xs hover:bg-white flex items-center justify-between gap-2 cursor-pointer"><span className="font-bold text-[#1F2D3D]">{demoPatient.name}</span><span className="font-mono text-[#0E7C86]">{demoPatient.email}</span></button>)}
                 {doctorList.map((demoDoctor, index) => {
@@ -3419,7 +3421,7 @@ export default function App() {
             <div className="flex items-center justify-between">
               <div>
                 <span className="text-xs font-bold text-[#0E7C86]">OPTICAL QR SCANNER</span>
-                <h3 className="text-lg font-bold text-[#1F2D3D]">Scan Patient HealthPass QR</h3>
+                <h3 className="text-lg font-bold text-[#1F2D3D]">{ui('Scan Patient HealthPass QR')}</h3>
               </div>
               <button
                 type="button"

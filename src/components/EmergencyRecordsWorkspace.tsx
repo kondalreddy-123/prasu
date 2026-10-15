@@ -25,7 +25,9 @@ import {
   translateDataSource,
   translateEmergencyStatus,
   translateVerificationTag,
+  translateMedicalCategory,
   normalizePrimaryLang,
+  translateUiPhrase,
 } from '../i18n/translations.ts';
 
 export type FieldVerificationTag =
@@ -227,6 +229,7 @@ export const EmergencyRecordsWorkspace: React.FC<{
   onNotify?: (msg: string, type?: 'success' | 'error' | 'info') => void;
 }> = ({ doctorId, doctorName, facilityName, lang, initialSubView = 'LIST', onNotify }) => {
   const pLang = normalizePrimaryLang(lang);
+  const ui = (phrase: string) => translateUiPhrase(phrase, lang);
   const [records, setRecords] = useState<EmergencyRecord[]>([]);
   const [loading, setLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -304,6 +307,15 @@ export const EmergencyRecordsWorkspace: React.FC<{
     useState<EmergencyLinkingWorkflow['conflictResolutionMode']>('KEEP_SEPARATE_PROVENANCE');
   const [linkError, setLinkError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+
+  const [showEmergencyLookup, setShowEmergencyLookup] = useState(false);
+  const [lookupHealthPassId, setLookupHealthPassId] = useState('');
+  const [lookupDateOfBirth, setLookupDateOfBirth] = useState('');
+  const [lookupReason, setLookupReason] = useState('');
+  const [unableToConsent, setUnableToConsent] = useState(false);
+  const [lookupBusy, setLookupBusy] = useState(false);
+  const [lookupError, setLookupError] = useState('');
+  const [emergencySummary, setEmergencySummary] = useState<any>(null);
 
   const [unlinkReason, setUnlinkReason] = useState('');
 
@@ -706,6 +718,70 @@ export const EmergencyRecordsWorkspace: React.FC<{
     }
   };
 
+  useEffect(() => {
+    if (!emergencySummary) return;
+    const timer = window.setTimeout(() => setEmergencySummary(null), 5 * 60 * 1000);
+    return () => window.clearTimeout(timer);
+  }, [emergencySummary]);
+
+  const clearEmergencyLookup = () => {
+    setEmergencySummary(null);
+    setLookupError('');
+    setLookupHealthPassId('');
+    setLookupDateOfBirth('');
+    setLookupReason('');
+    setUnableToConsent(false);
+    setShowEmergencyLookup(false);
+  };
+
+  const findEmergencyPatient = async (event: React.FormEvent) => {
+    event.preventDefault();
+    setLookupError('');
+    const normalizedId = lookupHealthPassId.trim().replace(/\s+/g, '').toUpperCase();
+    if (!/^HP-[A-Z0-9-]{3,37}$/.test(normalizedId)) {
+      setLookupError(ui('Enter a valid HealthPass ID.'));
+      return;
+    }
+    if (!lookupDateOfBirth || Number.isNaN(Date.parse(`${lookupDateOfBirth}T00:00:00`))) {
+      setLookupError(ui('Emergency access could not be verified. Check the details and authorized provider account, or create a new emergency record.'));
+      return;
+    }
+    if (lookupReason.trim().length < 10) {
+      setLookupError(ui('Enter a reason of at least 10 characters.'));
+      return;
+    }
+    if (!unableToConsent) {
+      setLookupError(ui('Confirm that the patient cannot consent to use emergency access.'));
+      return;
+    }
+
+    setLookupBusy(true);
+    setEmergencySummary(null);
+    try {
+      const response = await apiRequest<{ summary: any }>('/api/emergency/find-patient', {
+        method: 'POST',
+        body: JSON.stringify({
+          healthPassId: normalizedId,
+          dateOfBirth: lookupDateOfBirth,
+          reason: lookupReason.trim(),
+          patientUnableToConsent: true,
+        }),
+        suppressGlobal403: true,
+      });
+      if (!response.ok || !response.data?.summary?.accessEventId) {
+        setLookupError(response.status === 501
+          ? ui('This feature requires a configured, authenticated HealthPass backend. Local demo access is intentionally unavailable.')
+          : ui('Emergency access could not be verified. Check the details and authorized provider account, or create a new emergency record.'));
+        return;
+      }
+      setEmergencySummary(response.data.summary);
+    } catch {
+      setLookupError(ui('Emergency access could not be verified. Check the details and authorized provider account, or create a new emergency record.'));
+    } finally {
+      setLookupBusy(false);
+    }
+  };
+
   return (
     <div className="space-y-4">
       <div className="bg-white rounded-xl border border-slate-200 p-4 sm:p-5 shadow-xs">
@@ -738,6 +814,14 @@ export const EmergencyRecordsWorkspace: React.FC<{
             >
               <Plus className="w-4 h-4" />
               {tr('erCreateNewBtn', lang)}
+            </button>
+            <button
+              type="button"
+              onClick={() => { setShowEmergencyLookup(true); setLookupError(''); setEmergencySummary(null); }}
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-xs sm:text-sm font-bold border border-[#0B6E6E] bg-[#ECFDF5] text-[#0B6E6E] shadow-xs transition cursor-pointer"
+            >
+              <UserCheck className="w-4 h-4" />
+              {ui('Find Patient & View Emergency Records')}
             </button>
             <button
               type="button"
@@ -787,6 +871,69 @@ export const EmergencyRecordsWorkspace: React.FC<{
           </select>
         </div>
       </div>
+
+      {showEmergencyLookup && <section className="bg-white rounded-xl border border-rose-200 p-4 sm:p-5 shadow-xs space-y-4" aria-labelledby="emergency-lookup-title">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <h3 id="emergency-lookup-title" className="text-lg font-extrabold text-[#1F2D3D]">{emergencySummary ? ui('Emergency Access — Limited Medical Information') : ui('Find Patient & View Emergency Records')}</h3>
+            <p className="mt-1 text-sm text-slate-600">{ui('Identify a patient using verified details and access essential medical information during an emergency.')}</p>
+          </div>
+          <button type="button" onClick={clearEmergencyLookup} className="shrink-0 min-h-10 px-3 rounded-lg border border-slate-300 text-sm font-bold text-slate-700">{ui('Close and clear information')}</button>
+        </div>
+
+        {!emergencySummary ? <form onSubmit={findEmergencyPatient} className="space-y-3">
+          <div className="grid gap-3 sm:grid-cols-2">
+            <label className="block text-sm font-bold text-slate-800">{ui('HealthPass ID')}
+              <input autoComplete="off" required value={lookupHealthPassId} onChange={(e) => setLookupHealthPassId(e.target.value)} placeholder="HP-XXXXXXXXXXXX" maxLength={40} className="mt-1 w-full min-h-11 px-3 rounded-xl border border-slate-300 bg-white text-sm font-mono" />
+            </label>
+            <label className="block text-sm font-bold text-slate-800">{ui('Date of birth (trusted-verified)')}
+              <input type="date" required value={lookupDateOfBirth} onChange={(e) => setLookupDateOfBirth(e.target.value)} className="mt-1 w-full min-h-11 px-3 rounded-xl border border-slate-300 bg-white text-sm" />
+            </label>
+          </div>
+          <label className="block text-sm font-bold text-slate-800">{ui('Emergency reason')}
+            <textarea required minLength={10} maxLength={500} value={lookupReason} onChange={(e) => setLookupReason(e.target.value)} placeholder={ui('Describe the immediate clinical emergency (10–500 characters)')} className="mt-1 w-full min-h-20 p-3 rounded-xl border border-slate-300 bg-white text-sm" />
+          </label>
+          <label className="flex items-start gap-2 text-sm text-slate-800">
+            <input type="checkbox" checked={unableToConsent} onChange={(e) => setUnableToConsent(e.target.checked)} className="mt-1 h-4 w-4 accent-[#0B6E6E]" />
+            <span>{ui('I confirm the patient cannot provide consent right now and urgent care cannot wait.')}</span>
+          </label>
+          <p className="text-xs text-slate-600">{ui('If the patient can consent, use the ordinary patient-consent workflow instead. Do not delay urgent treatment to retrieve digital records.')}</p>
+          <p className="text-xs text-slate-600">{ui('No patient information is shown until the server verifies an active doctor account, HealthPass ID, date of birth, reason, and emergency attestation.')}</p>
+          <p className="text-xs text-slate-600">{ui('The date of birth must have been verified by trusted HealthPass staff against an identity document. A patient-entered date alone cannot authorize access.')}</p>
+          {lookupError && <p role="alert" className="rounded-lg border border-rose-200 bg-rose-50 p-3 text-sm font-semibold text-rose-800">{lookupError}</p>}
+          <button type="submit" disabled={lookupBusy} className="min-h-11 px-4 rounded-lg bg-[#0B6E6E] text-sm font-bold text-white disabled:opacity-60">{lookupBusy ? ui('Verifying…') : ui('Verify identity and open limited summary')}</button>
+        </form> : <div className="space-y-4">
+          <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-900">
+            <strong>{ui('Emergency access logged')}</strong> · {new Date(emergencySummary.accessedAt).toLocaleString()} · {ui('Limited information will clear automatically after five minutes.')}
+            <p className="mt-1">{ui('Emergency reason')}: {emergencySummary.reason}</p>
+          </div>
+          <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+            <h4 className="text-base font-bold text-[#1F2D3D]">{emergencySummary.patient?.name || ui('Not available')} · {emergencySummary.patient?.healthPassId}</h4>
+            <p className="text-xs text-slate-600">{ui('Blood group')}: {emergencySummary.patient?.bloodGroup || ui('Not available')}</p>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {[
+              [ui('Known allergies'), emergencySummary.patient?.knownAllergies],
+              [ui('Adverse drug reactions'), emergencySummary.patient?.adverseDrugReactions],
+              [ui('Current medications'), emergencySummary.patient?.currentMedications],
+              [ui('Critical medical conditions'), emergencySummary.patient?.medicalConditions],
+              [ui('Relevant past surgeries'), emergencySummary.patient?.pastSurgeries],
+              [ui('Relevant past diagnoses'), emergencySummary.records?.filter((r: any) => ['General Medical History', 'Cardiac Care', 'Diabetes & Metabolic Health', 'Respiratory Health', 'Neurological Health', 'Kidney Health'].includes(r.category))?.map((r: any) => r.title).join(', ')],
+            ].map(([label, value]) => <div key={label} className="rounded-xl border border-slate-200 bg-white p-3"><h5 className="text-sm font-bold text-[#1F2D3D]">{label}</h5><p className="mt-1 text-sm text-slate-700 whitespace-pre-wrap">{value || ui('Not available')}</p></div>)}
+          </div>
+          <div className="grid gap-3 lg:grid-cols-2">
+            <section className="rounded-xl border border-slate-200 p-3"><h5 className="text-sm font-bold text-[#1F2D3D]">{ui('Relevant prescriptions')}</h5>
+              {emergencySummary.prescriptions?.length ? <ul className="mt-2 space-y-2">{emergencySummary.prescriptions.map((rx: any, index: number) => <li key={`${rx.medicationName}-${index}`} className="text-sm text-slate-700"><strong>{rx.medicationName || ui('Not available')}</strong>{rx.strength ? ` · ${rx.strength}` : ''}{rx.dosage ? ` · ${rx.dosage}` : ''}{rx.frequency ? ` · ${rx.frequency}` : ''}{rx.validUntil ? ` · ${ui('Until')} ${rx.validUntil}` : ''}</li>)}</ul> : <p className="mt-2 text-sm text-slate-600">{ui('Not available')}</p>}
+            </section>
+            <section className="rounded-xl border border-slate-200 p-3"><h5 className="text-sm font-bold text-[#1F2D3D]">{ui('Recent clinically relevant records')}</h5>
+              {emergencySummary.records?.length ? <ul className="mt-2 space-y-2">{emergencySummary.records.map((record: any) => <li key={record.id} className="text-sm text-slate-700"><strong>{translateMedicalCategory(record.category, lang)}</strong> · {record.title}{record.date ? ` · ${record.date}` : ''}<p className="text-xs text-slate-600">{record.summary || ui('Not available')} · {translateVerificationTag(record.verificationStatus === 'CLINICIAN_VERIFIED' ? 'VERIFIED' : 'UNKNOWN_UNVERIFIED', lang)}</p></li>)}</ul> : <p className="mt-2 text-sm text-slate-600">{ui('Not available')}</p>}
+            </section>
+            <section className="rounded-xl border border-slate-200 p-3"><h5 className="text-sm font-bold text-[#1F2D3D]">{ui('Important laboratory findings')}</h5>
+              {emergencySummary.labFindings?.length ? <ul className="mt-2 space-y-2">{emergencySummary.labFindings.map((record: any) => <li key={record.id} className="text-sm text-slate-700"><strong>{record.title}</strong>{record.date ? ` · ${record.date}` : ''}<p className="text-xs text-slate-600">{record.summary || ui('Not available')} · {translateVerificationTag(record.verificationStatus === 'CLINICIAN_VERIFIED' ? 'VERIFIED' : 'UNKNOWN_UNVERIFIED', lang)}</p></li>)}</ul> : <p className="mt-2 text-sm text-slate-600">{ui('Not available')}</p>}
+            </section>
+          </div>
+        </div>}
+      </section>}
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
         <div className="lg:col-span-4 space-y-2.5">

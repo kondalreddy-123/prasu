@@ -1,7 +1,7 @@
 # HC_07_pros
 ## HealthPass local hackathon prototype
 
-HealthPass is a fictional, browser-local prototype built with React, Vite, TypeScript, and CSS. It has no Supabase, Firebase, cloud database, or remote API runtime. The mock API in `src/api.ts` always serves the local demo store.
+HealthPass is a fictional prototype built with React, Vite, TypeScript, and CSS. It runs in browser-local demo mode by default and also contains an optional Supabase Auth/database adapter when `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` are configured. The local demo API is not secure authentication or backend authorization.
 
 ## Start and build
 
@@ -12,7 +12,7 @@ npm test
 npm run build
 ```
 
-Open the local URL printed by Vite. There are no environment keys or cloud account requirements.
+Open the local URL printed by Vite. Local demo mode has no environment-key or cloud-account requirements.
 
 ## Demo accounts
 
@@ -46,7 +46,9 @@ Browser storage is not encrypted or protected like a medical database. Demo acco
 - Image and scanned-PDF OCR are not configured. The report explainer uses saved extracted text or the report's textual summary only.
 - Camera QR scanning depends on browser camera support and permission. Manual HealthPass ID lookup remains available.
 - This prototype uses fictional accounts and example data. Pharmacist identity, clinician credentials, and consent are simulations, not verified claims.
-- Supabase migration files remain in `supabase/migrations/` as prior design artifacts only. They are not imported, applied, or used by this local-only app.
+- Emergency patient lookup is available only with a configured Supabase backend and the migrations applied through `202610150004_emergency_limited_access.sql`. It requires an active verified doctor, HealthPass ID plus date of birth verified against an identity document by trusted staff, a documented reason, and an explicit emergency attestation. Only a trusted service/admin may set the date-of-birth verification timestamp. The database returns a limited summary and writes an audit event that the patient can review. Local demo mode refuses this workflow because it cannot enforce the required server authorization.
+- The current patient profile schema has no verified mobile-number field, so emergency lookup does not search by mobile number. It does not search by name alone.
+- Supabase migrations in `supabase/migrations/` are executable database changes; review and apply them to the configured Supabase project in order before using the corresponding backend features. No live Supabase database was used for this local build verification.
 
 ## Optional local AI report explanation
 
