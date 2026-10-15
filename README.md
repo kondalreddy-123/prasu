@@ -1,4 +1,5 @@
-# HealthPass local hackathon prototype
+# HC_07_pros
+## HealthPass local hackathon prototype
 
 HealthPass is a fictional, browser-local prototype built with React, Vite, TypeScript, and CSS. It has no Supabase, Firebase, cloud database, or remote API runtime. The mock API in `src/api.ts` always serves the local demo store.
 
