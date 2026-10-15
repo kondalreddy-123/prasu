@@ -94,7 +94,7 @@ export function parseOcrClinicalText(rawText: string, confidence = 85): Omit<Ocr
 
   // Extract date
   const dateMatch = text.match(/(\d{1,2}[\/\-.][A-Za-z0-9]{3,}[\/\-.]\d{2,4}|\d{1,2}\s+[A-Za-z]{3,}\s+\d{2,4})/);
-  const reportDate = dateMatch ? dateMatch[0] : new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+  const reportDate = dateMatch ? dateMatch[0] : '';
 
   // Extract facility / doctor
   let facilityName = '';
@@ -107,40 +107,28 @@ export function parseOcrClinicalText(rawText: string, confidence = 85): Omit<Ocr
       doctorName = line;
     }
   }
-  if (!facilityName) facilityName = 'District Health Services';
-  if (!doctorName) doctorName = 'Dr. Attending Physician';
-
   // Extract Lab values
   const labValues: ExtractedLabValue[] = [];
   const labPatterns = [
-    { key: 'Haemoglobin', unit: 'g/dL', ref: '12.0 - 15.5' },
-    { key: 'Total WBC Count', unit: '/cumm', ref: '4,000 - 11,000' },
-    { key: 'Platelet Count', unit: 'lakhs/cumm', ref: '1.5 - 4.5' },
-    { key: 'Fasting Blood Sugar', unit: 'mg/dL', ref: '70 - 100' },
-    { key: 'Post-Prandial Sugar', unit: 'mg/dL', ref: '< 140' },
-    { key: 'HbA1c', unit: '%', ref: '< 5.7' },
-    { key: 'Serum Creatinine', unit: 'mg/dL', ref: '0.6 - 1.2' },
-    { key: 'Total Cholesterol', unit: 'mg/dL', ref: '< 200' },
-    { key: 'Serum Bilirubin', unit: 'mg/dL', ref: '0.2 - 1.2' },
+    'Haemoglobin', 'Total WBC Count', 'Platelet Count', 'Fasting Blood Sugar',
+    'Post-Prandial Sugar', 'HbA1c', 'Serum Creatinine', 'Total Cholesterol', 'Serum Bilirubin',
   ];
 
-  for (const p of labPatterns) {
-    const rx = new RegExp(`${p.key}[^0-9]*([0-9.,]+)`, 'i');
-    const m = text.match(rx);
+  for (const testName of labPatterns) {
+    const escapedName = testName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const rx = new RegExp(`${escapedName}[^\\n\\d]{0,30}([0-9][0-9.,]*)`, 'i');
+    const m = rx.exec(text);
     if (m) {
-      const valNum = parseFloat(m[1].replace(',', '.'));
-      let status: 'NORMAL' | 'HIGH' | 'LOW' = 'NORMAL';
-      if (p.key === 'Fasting Blood Sugar' && valNum > 100) status = 'HIGH';
-      if (p.key === 'HbA1c' && valNum > 6.4) status = 'HIGH';
-      if (p.key === 'Haemoglobin' && valNum < 12) status = 'LOW';
+      const context = text.slice(m.index, m.index + 240);
+      const unitMatch = context.match(new RegExp(`${m[1].replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*(mg\\s*\\/\\s*dL|g\\s*\\/\\s*dL|lakhs\\s*\\/\\s*cumm|\\/cumm|mmol\\/L|mEq\\/L|%|µmol\\/L)`, 'i'));
+      const referenceMatch = context.match(/(?:reference(?:\s+range|\s+interval)?|ref\.?\s*(?:range|interval))\s*[:=]?\s*([<>≤≥]?\s*\d[\d,.]*(?:\s*[-–]\s*\d[\d,.]*)?)/i);
       labValues.push({
         id: `lv-${Math.random().toString(36).slice(2, 7)}`,
-        testName: p.key,
+        testName,
         value: m[1],
-        unit: p.unit,
-        referenceRange: p.ref,
-        status,
-        confidence: 'HIGH',
+        unit: unitMatch?.[1]?.replace(/\s+/g, '') || '',
+        referenceRange: referenceMatch?.[1]?.trim() || '',
+        confidence: 'LOW',
       });
     }
   }
@@ -153,17 +141,17 @@ export function parseOcrClinicalText(rawText: string, confidence = 85): Omit<Ocr
       extractedMedicines.push({
         id: `rx-${Math.random().toString(36).slice(2, 7)}`,
         name: mn,
-        strength: '500 mg',
-        dosage: '1 Tablet',
-        route: 'Oral',
-        morning: 1,
+        strength: '',
+        dosage: '',
+        route: '',
+        morning: 0,
         noon: 0,
-        night: 1,
-        durationDays: 5,
-        foodInstruction: 'After food',
-        instructions: 'Take after meals with water',
-        confidence: 'HIGH',
-        confirmed: true,
+        night: 0,
+        durationDays: 0,
+        foodInstruction: '',
+        instructions: '',
+        confidence: 'LOW',
+        confirmed: false,
       });
     }
   }
@@ -176,13 +164,13 @@ export function parseOcrClinicalText(rawText: string, confidence = 85): Omit<Ocr
     facilityName,
     laboratoryName: facilityName,
     doctorName,
-    diagnosis: 'Routine clinical evaluation and diagnostic investigation.',
-    dischargeSummaryNotes: reportType === 'Discharge Summary' ? 'Stable condition at discharge. Follow up after 7 days.' : '',
+    diagnosis: '',
+    dischargeSummaryNotes: '',
     fieldConfidence: {
-      reportDate: 'HIGH',
-      facilityName: 'HIGH',
-      doctorName: 'HIGH',
-      diagnosisSummary: 'HIGH',
+      reportDate: 'LOW',
+      facilityName: 'LOW',
+      doctorName: 'LOW',
+      diagnosisSummary: 'LOW',
     },
     labValues,
     extractedMedicines,

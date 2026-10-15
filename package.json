@@ -5,8 +5,9 @@
   "type": "module",
   "scripts": {
     "dev": "vite --port=3000 --host=0.0.0.0",
+    "ai-server": "node server/reportExplanationServer.mjs",
     "build": "vite build",
-    "test": "node --test src/services/prescriptionDuplicates.test.js src/services/pharmacistPrescriptionAccess.test.js src/services/demoLocalStore.test.js src/services/apiBackendRouting.test.js src/services/supabaseMigrationContract.test.js",
+    "test": "node --test src/services/prescriptionDuplicates.test.js src/services/pharmacistPrescriptionAccess.test.js src/services/demoLocalStore.test.js src/services/apiBackendRouting.test.js src/services/supabaseMigrationContract.test.js src/services/reportSpeech.test.js src/services/reportExplanation.test.js src/services/ocrServiceSafety.test.js server/reportExplanationService.test.mjs",
     "preview": "vite preview",
     "clean": "rm -rf dist server.js",
     "lint": "tsc --noEmit"

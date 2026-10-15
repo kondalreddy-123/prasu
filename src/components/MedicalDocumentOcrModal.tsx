@@ -169,12 +169,7 @@ export const MedicalDocumentOcrModal: React.FC<MedicalDocumentOcrModalProps> = (
           : 'Extracted structured candidate fields from document.')
     );
     setFieldConfidence(res.fieldConfidence);
-    setLabValues(
-      res.labValues.map((lv) => ({
-        ...lv,
-        status: lv.status || 'NORMAL',
-      }))
-    );
+    setLabValues(res.labValues);
     setDetectedMedicines(res.extractedMedicines || []);
 
     const autoTitle =
@@ -350,7 +345,7 @@ export const MedicalDocumentOcrModal: React.FC<MedicalDocumentOcrModalProps> = (
       plainExplanation:
         plainExplanation.trim() ||
         'Verified by user after OCR extraction. Consult a qualified doctor for clinical interpretation.',
-      statusColor: cleanLabs.some((l) => l.status !== 'NORMAL') ? 'BORDERLINE' : 'NORMAL',
+      statusColor: undefined,
       fileType: fileTypeLabel,
       fileDataUrl: filePreviewUrl || undefined,
       source: 'OCR_UPLOAD',

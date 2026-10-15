@@ -31,6 +31,7 @@ import {
   XCircle,
 } from 'lucide-react';
 import { LANG_META, SupportedLang, TRANSLATIONS, translateUiPhrase } from '../i18n/translations.ts';
+import { findSpeechVoiceForLocale } from '../services/reportSpeech.js';
 
 export type FacilityLevel = 'VILLAGE' | 'MANDAL' | 'DISTRICT' | 'PHARMACY' | 'LAB';
 
@@ -136,6 +137,7 @@ export const SpeechButton: React.FC<{
   label?: string;
 }> = ({ text, lang, label }) => {
   const [speaking, setSpeaking] = useState(false);
+  const [speechMessage, setSpeechMessage] = useState('');
   const supported = typeof window !== 'undefined' && 'speechSynthesis' in window && typeof SpeechSynthesisUtterance !== 'undefined';
 
   useEffect(() => () => {
@@ -144,6 +146,7 @@ export const SpeechButton: React.FC<{
 
   const handleSpeak = () => {
     if (!supported) {
+      setSpeechMessage(translateUiPhrase('Read aloud is not supported by this browser.', lang));
       return;
     }
     window.speechSynthesis.cancel();
@@ -151,8 +154,15 @@ export const SpeechButton: React.FC<{
       setSpeaking(false);
       return;
     }
+    const voice = findSpeechVoiceForLocale(window.speechSynthesis.getVoices(), LANG_META[lang]?.speechLang);
+    if (!voice) {
+      setSpeechMessage(translateUiPhrase('No system voice for this language is installed. Add a voice in Windows speech settings and try again.', lang));
+      setSpeaking(false);
+      return;
+    }
     const utterance = new SpeechSynthesisUtterance(text);
     utterance.lang = LANG_META[lang].speechLang;
+    utterance.voice = voice;
     utterance.rate = 0.95;
     utterance.onend = () => setSpeaking(false);
     utterance.onerror = () => setSpeaking(false);
@@ -161,6 +171,7 @@ export const SpeechButton: React.FC<{
   };
 
   return (
+    <span className="inline-flex flex-wrap items-center gap-2">
     <button
       type="button"
       onClick={handleSpeak}
@@ -172,6 +183,9 @@ export const SpeechButton: React.FC<{
       <Volume2 className={`w-4 h-4 ${speaking ? 'text-[#D32F2F]' : 'text-[#0E7C86]'}`} />
       <span>{speaking ? TRANSLATIONS[lang].stopAudio : label || TRANSLATIONS[lang].readAloud}</span>
     </button>
+    {speechMessage && <span role="status" className="text-xs text-amber-800">{speechMessage}</span>}
+    {!supported && <span role="status" className="text-xs text-amber-800">{translateUiPhrase('Read aloud is not supported by this browser.', lang)}</span>}
+    </span>
   );
 };
 
@@ -1035,7 +1049,7 @@ export const PWAInstallButton: React.FC = () => {
   );
 };
 
-function describeLabTestEducationalInfo(testName: string, status: 'NORMAL' | 'HIGH' | 'LOW', value: string, unit: string, referenceRange: string) {
+function describeLabTestEducationalInfo(testName: string, value: string, unit: string, referenceRange: string) {
   const lower = testName.toLowerCase();
   let whatItMeasures =
     'This laboratory test measures a biochemical or cellular marker in your sample to help your doctor assess organ or metabolic function.';
@@ -1113,12 +1127,8 @@ function describeLabTestEducationalInfo(testName: string, status: 'NORMAL' | 'HI
   let relativeNote = '';
   if (!hasPrintedRange) {
     relativeNote = `Recorded value is ${value} ${unit}. No reference range was printed on this report; please ask your doctor for the laboratory's reference interval.`;
-  } else if (status === 'LOW') {
-    relativeNote = `Your result (${value} ${unit}) is below the printed reference range (${referenceRange} ${unit}). Mild variations can happen for many reasons; discuss this with your doctor.`;
-  } else if (status === 'HIGH') {
-    relativeNote = `Your result (${value} ${unit}) is above the printed reference range (${referenceRange} ${unit}). Please review this value with a qualified doctor.`;
   } else {
-    relativeNote = `Your result (${value} ${unit}) is within the printed reference range (${referenceRange} ${unit}).`;
+    relativeNote = `The report prints this value and reference range (${value} ${unit}; ${referenceRange} ${unit}). This comparison alone does not establish what the result means for you; ask your doctor to interpret it in context.`;
   }
 
   return { whatItMeasures, relativeNote, questionsToAsk, hasPrintedRange };
@@ -1168,7 +1178,6 @@ export const LabReportExplanationPanel: React.FC<{
           value: m[2].trim(),
           unit: (m[3] || '').trim(),
           referenceRange: '',
-          status: 'NORMAL',
         });
       }
     }
@@ -1185,7 +1194,7 @@ export const LabReportExplanationPanel: React.FC<{
           </span>
         </div>
         <SpeechButton
-          text={`${report.title}. ${report.plainExplanation || report.resultSummary}. This explanation is for general understanding only and is not a medical diagnosis. Please consult a qualified doctor to interpret these results.`}
+          text={`${report.title}. ${report.resultSummary}. This report text is for general understanding only and is not a medical diagnosis. Please consult a qualified doctor to interpret these results.`}
           lang={lang}
         />
       </div>
@@ -1193,33 +1202,16 @@ export const LabReportExplanationPanel: React.FC<{
       {labValues.length > 0 ? (
         <div className="space-y-3">
           {labValues.map((lv, idx) => {
-            const resolvedStatus = lv.status || 'NORMAL';
             const info = describeLabTestEducationalInfo(
               lv.testName,
-              resolvedStatus,
               lv.value,
               lv.unit,
               lv.referenceRange
             );
-            const statusBadge = !info.hasPrintedRange
-              ? {
-                  label: 'No Printed Range on Report',
-                  cls: 'bg-white text-[#5B6B7A] border-[#DDE7EA]',
-                }
-              : resolvedStatus === 'LOW'
-              ? {
-                  label: 'Below Reference Range',
-                  cls: 'bg-[#FFFBEB] text-[#B7791F] border-[#FDE68A]',
-                }
-              : resolvedStatus === 'HIGH'
-              ? {
-                  label: 'Above Reference Range',
-                  cls: 'bg-[#FFFBEB] text-[#B7791F] border-[#FDE68A]',
-                }
-              : {
-                  label: 'Within Reference Range',
-                  cls: 'bg-[#ECFDF5] text-[#1E8E5A] border-[#A7F3D0]',
-                };
+            const statusBadge = {
+              label: info.hasPrintedRange ? 'Range shown · interpretation not provided' : 'No Printed Range on Report',
+              cls: 'bg-white text-[#5B6B7A] border-[#DDE7EA]',
+            };
 
             return (
               <div
@@ -1271,7 +1263,7 @@ export const LabReportExplanationPanel: React.FC<{
           })}
         </div>
       ) : (
-        <p className="text-xs text-[#1F2D3D]">{report.plainExplanation || report.resultSummary}</p>
+        <p className="text-xs text-[#1F2D3D]">{report.resultSummary || 'No report text is available.'}</p>
       )}
 
       <div className="p-3 rounded-xl bg-[#FFFBEB] border border-[#E8A317]/60 text-xs font-semibold text-[#92400E]">

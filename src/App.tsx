@@ -75,6 +75,7 @@ import {
 } from './components/SharedUI.tsx';
 import { AddConsultationModal } from './components/AddConsultationModal.tsx';
 import { MedicalDocumentOcrModal } from './components/MedicalDocumentOcrModal.tsx';
+import { ReportReadAloudControls } from './components/ReportReadAloudControls.tsx';
 import { HowItWorksWalkthrough } from './components/HowItWorksWalkthrough.tsx';
 import {
   EmergencyRecordsWorkspace,
@@ -95,6 +96,7 @@ import {
   MEDICAL_RECORD_CATEGORIES,
 } from './medicalRecordCategories.ts';
 import { buildMedicalRecordCompleteness } from './services/medicalRecordCompleteness.ts';
+import { formatReportExplanation, getReportExplanationSections, REPORT_EXPLANATION_SAFETY_NOTICE, validateReportExplanation } from './services/reportExplanation.js';
 import { createPersonalHealthReportPdf } from './services/personalHealthReportPdf.ts';
 import {
   buildOfflineMedicalSummary,
@@ -267,6 +269,7 @@ export default function App() {
   const [activeDoctorId, setActiveDoctorId] = useState<string>('doc-village');
   const [doctorList, setDoctorList] = useState(DOCTOR_DIRECTORY);
   const [patientTab, setPatientTab] = useState<PatientTab>('HEALTH');
+  useEffect(() => () => reportAiAbortRef.current?.abort(), [mode, patientTab]);
   const [selectedMedicalRecordCategory, setSelectedMedicalRecordCategory] = useState<string | null>(null);
   const [selectedDoctorRecordCategory, setSelectedDoctorRecordCategory] = useState<string | null>(null);
   const [medicalRecordSearch, setMedicalRecordSearch] = useState('');
@@ -279,8 +282,23 @@ export default function App() {
   const [reportSummaries, setReportSummaries] = useState<Record<string, any>>({});
   const [summaryLoadingId, setSummaryLoadingId] = useState<string | null>(null);
   const [summaryErrors, setSummaryErrors] = useState<Record<string, string>>({});
-  const [reportExplanationLanguage, setReportExplanationLanguage] = useState<'en' | 'te'>('en');
-  const [externalAiConsent, setExternalAiConsent] = useState(false);
+  const [reportExplanationLanguage, setReportExplanationLanguage] = useState<'en' | 'te' | 'hi'>(() => {
+    try {
+      const saved = localStorage.getItem('healthpass_report_explanation_language');
+      return saved === 'te' || saved === 'hi' ? saved : 'en';
+    } catch { return 'en'; }
+  });
+  const [externalAiConsent, setExternalAiConsent] = useState<Record<string, boolean>>({});
+  const [reportAiExplanations, setReportAiExplanations] = useState<Record<string, any>>({});
+  const [copiedExplanationId, setCopiedExplanationId] = useState<string | null>(null);
+  const reportAiAbortRef = useRef<AbortController | null>(null);
+
+  useEffect(() => {
+    try { localStorage.setItem('healthpass_report_explanation_language', reportExplanationLanguage); } catch { /* preference storage is optional */ }
+  }, [reportExplanationLanguage]);
+
+  useEffect(() => () => reportAiAbortRef.current?.abort(), []);
+
 
   const requestReportSummary = async (reportId: string) => {
     setSummaryLoadingId(reportId);
@@ -297,23 +315,62 @@ export default function App() {
   };
 
   const requestReportAiExplanation = async (reportId: string) => {
+    if (reportAiAbortRef.current) return;
     setSummaryErrors((current) => ({ ...current, [reportId]: '' }));
-    if (!externalAiConsent) {
-      setSummaryErrors((current) => ({ ...current, [reportId]: 'Please allow report text to be sent to the configured AI service before requesting an explanation.' }));
+    if (loggedInUser?.role !== 'patient' || loggedInUser.id !== activePatientId) {
+      setSummaryErrors((current) => ({ ...current, [reportId]: 'Sign in as the patient who owns this report before requesting an explanation.' }));
+      return;
+    }
+    if (!externalAiConsent[reportId]) {
+      setSummaryErrors((current) => ({ ...current, [reportId]: 'Please consent before sending de-identified report text to the configured AI service.' }));
+      return;
+    }
+    if (loggedInUser?.backend === 'supabase') {
+      setSummaryErrors((current) => ({ ...current, [reportId]: 'AI explanations are not enabled for signed-in cloud accounts. This local demo service cannot verify cloud report permissions.' }));
       return;
     }
     setSummaryLoadingId(reportId);
+    const controller = new AbortController();
+    reportAiAbortRef.current?.abort();
+    reportAiAbortRef.current = controller;
+    const timeout = window.setTimeout(() => controller.abort(), 38000);
     try {
-      const result = await apiRequest(`/api/patient/${activePatientId}/reports/${reportId}/explanation`, {
+      const authorized = await apiRequest(`/api/patient/${activePatientId}/reports/${reportId}/explanation`, {
         method: 'POST', patientId: activePatientId,
         body: JSON.stringify({ language: reportExplanationLanguage, externalAiConsent: true }),
       });
-      if (!result.ok) throw new Error(result.data?.error || result.data?.message || 'AI explanation is unavailable. The original report was not sent.');
-      setReportSummaries((current) => ({ ...current, [reportId]: result.data.explanation }));
+      if (!authorized.ok) throw new Error(authorized.data?.error || authorized.data?.message || 'This report is not available for explanation.');
+
+      const sessionResponse = await fetch('/api/report-explanations/session', { cache: 'no-store', signal: controller.signal });
+      const session = await sessionResponse.json().catch(() => ({}));
+      if (!sessionResponse.ok || !session.token) throw new Error(session.error || 'The local AI service is unavailable. Start it in a second terminal; the original report was not sent.');
+      if (!session.configured) throw new Error('AI is not configured. Your report was not sent. Configure the server-side OPENAI_API_KEY and restart the local AI service.');
+      const response = await fetch('/api/report-explanations', {
+        method: 'POST', cache: 'no-store', signal: controller.signal,
+        headers: { 'Content-Type': 'application/json', 'X-HealthPass-AI-Session': session.token },
+        body: JSON.stringify({ reportText: authorized.data.sourceText, language: reportExplanationLanguage, externalAiConsent: true }),
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(result.error || 'The AI explanation could not be generated. The original report is unchanged.');
+      if (!validateReportExplanation(result.explanation, reportExplanationLanguage, authorized.data.sourceText)) throw new Error('The AI returned an incomplete explanation or a value not found in the report. You can retry.');
+      setReportAiExplanations((current) => ({ ...current, [`${reportId}:${reportExplanationLanguage}`]: result.explanation }));
     } catch (error: any) {
-      setSummaryErrors((current) => ({ ...current, [reportId]: error.message || 'AI explanation is unavailable. The original report was not sent.' }));
+      const message = error?.name === 'AbortError' ? 'The explanation request timed out or was cancelled. Your original report is unchanged.' : error.message || 'AI explanation is unavailable. The original report was not sent.';
+      setSummaryErrors((current) => ({ ...current, [reportId]: message }));
     } finally {
+      window.clearTimeout(timeout);
+      if (reportAiAbortRef.current === controller) reportAiAbortRef.current = null;
       setSummaryLoadingId(null);
+    }
+  };
+
+  const copyReportAiExplanation = async (reportId: string, explanation: any) => {
+    try {
+      await navigator.clipboard.writeText(formatReportExplanation(explanation));
+      setCopiedExplanationId(reportId);
+      window.setTimeout(() => setCopiedExplanationId((current) => current === reportId ? null : current), 1800);
+    } catch {
+      setSummaryErrors((current) => ({ ...current, [reportId]: 'Copy is unavailable in this browser. Select the explanation text and copy it manually.' }));
     }
   };
 
@@ -349,6 +406,12 @@ export default function App() {
     healthPassId?: string;
     backend?: 'demo' | 'supabase';
   } | null>(null);
+
+  useEffect(() => {
+    setExternalAiConsent({});
+    setReportAiExplanations({});
+    setSummaryErrors({});
+  }, [activePatientId, loggedInUser?.id]);
 
   // Patient Wallet State
   const [walletData, setWalletData] = useState<any | null>(null);
@@ -1260,6 +1323,39 @@ export default function App() {
     finally { setHealthReportBusy(false); }
   };
 
+  const openOriginalMedicalFile = (fileUrl?: string) => {
+    if (!fileUrl) return;
+    try {
+      // Chromium blocks top-level navigation to data: URLs. Convert uploaded
+      // originals to a same-origin blob URL; reserve the tab synchronously so
+      // the browser's popup blocker recognizes the user's click.
+      if (fileUrl.startsWith('data:')) {
+        const tab = window.open('about:blank', '_blank');
+        if (!tab) {
+          showToast('The original file could not be opened. Allow pop-ups and try again.');
+          return;
+        }
+        tab.opener = null;
+        tab.document.title = 'Opening original file…';
+        void fetch(fileUrl).then(async (fileResponse) => {
+          if (!fileResponse.ok) throw new Error('Could not read the original file.');
+          const blob = await fileResponse.blob();
+          const blobUrl = URL.createObjectURL(blob);
+          tab.location.replace(blobUrl);
+          window.setTimeout(() => URL.revokeObjectURL(blobUrl), 60_000);
+        }).catch(() => {
+          tab.close();
+          showToast('The original file could not be read.');
+        });
+        return;
+      }
+      const opened = window.open(fileUrl, '_blank', 'noopener,noreferrer');
+      if (!opened) showToast('The original file could not be opened. Allow pop-ups and try again.');
+    } catch {
+      showToast('The original file could not be opened.');
+    }
+  };
+
   const saveOfflinePatientSummary = async () => {
     if (loggedInUser?.role !== 'patient' || loggedInUser.id !== activePatientId) {
       setOfflineMessage(ui('Sign in as this patient to save an offline summary.')); return;
@@ -2044,7 +2140,7 @@ export default function App() {
                   return <article key={report.id} className="p-3 rounded-xl border border-[#DDE7EA] bg-[#F5F9FA] space-y-2">
                     <div className="flex flex-wrap items-start justify-between gap-2"><div><h4 className="text-sm font-bold text-[#1F2D3D]">{report.title}</h4><p className="mt-1 text-xs text-[#5B6B7A]">Prescription date: {reportDate || 'Unknown'} · Prescribing provider: {provider}</p><p className="text-[11px] text-[#5B6B7A]">Medical category: {category} · {period === 'CURRENT' ? 'Current prescription' : period === 'HISTORICAL' ? 'Historical prescription' : 'Status not classified'}</p></div><span className="px-2 py-1 rounded-lg bg-white border border-[#DDE7EA] text-[10px] font-bold text-[#5B6B7A]">{report.verificationStatus === 'PATIENT_REVIEWED' || report.confirmedByUser ? 'Patient reviewed' : 'Unverified'}</span></div>
                     <p className="text-[11px] text-[#5B6B7A]">Source: {report.source || 'Unknown'} · Uploaded: {uploadedAt ? new Date(uploadedAt).toLocaleString() : 'Unknown'}</p>
-                    <div className="flex flex-wrap gap-2">{report.fileDataUrl ? <a href={report.fileDataUrl} target="_blank" rel="noreferrer" className="min-h-[34px] px-3 inline-flex items-center rounded-lg border border-[#DDE7EA] bg-white text-xs font-bold text-[#0E7C86]">Open original prescription</a> : <span className="text-[11px] text-[#5B6B7A]">Original file is not available in this record.</span>}<button type="button" onClick={() => { setPrescriptionMetadataDraft({ reportDate, prescribingProvider: provider === 'Unknown' ? '' : provider, medicalCategory: category, prescriptionPeriod: period }); setPrescriptionEditId(report.id); setPrescriptionSaveError(''); }} className="min-h-[34px] px-3 rounded-lg border border-[#DDE7EA] bg-white text-xs font-bold text-[#0E7C86]">Correct details</button></div>
+                    <div className="flex flex-wrap gap-2">{report.fileDataUrl ? <button type="button" onClick={() => openOriginalMedicalFile(report.fileDataUrl)} className="min-h-[34px] px-3 inline-flex items-center rounded-lg border border-[#DDE7EA] bg-white text-xs font-bold text-[#0E7C86]">Open original prescription</button> : <span className="text-[11px] text-[#5B6B7A]">Original file is not available in this record.</span>}<button type="button" onClick={() => { setPrescriptionMetadataDraft({ reportDate, prescribingProvider: provider === 'Unknown' ? '' : provider, medicalCategory: category, prescriptionPeriod: period }); setPrescriptionEditId(report.id); setPrescriptionSaveError(''); }} className="min-h-[34px] px-3 rounded-lg border border-[#DDE7EA] bg-white text-xs font-bold text-[#0E7C86]">Correct details</button></div>
                     {prescriptionEditId === report.id && <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 p-3 rounded-lg border border-[#DDE7EA] bg-white">
                       <label className="text-[11px] font-semibold text-[#5B6B7A]">Prescription date<input value={prescriptionMetadataDraft.reportDate || ''} onChange={(e) => setPrescriptionMetadataDraft((current: any) => ({ ...current, reportDate: e.target.value }))} placeholder="Unknown" className="block mt-1 w-full min-h-[36px] px-2 rounded-lg border border-[#DDE7EA] text-xs" /></label>
                       <label className="text-[11px] font-semibold text-[#5B6B7A]">Prescribing provider<input value={prescriptionMetadataDraft.prescribingProvider || ''} onChange={(e) => setPrescriptionMetadataDraft((current: any) => ({ ...current, prescribingProvider: e.target.value }))} placeholder="Unknown" className="block mt-1 w-full min-h-[36px] px-2 rounded-lg border border-[#DDE7EA] text-xs" /></label>
@@ -2188,7 +2284,7 @@ export default function App() {
                     <div>
                       <div className="flex flex-wrap items-center gap-2">
                         <h4 className="text-base font-bold text-[#1F2D3D]">{rep.title}</h4>
-                        {rep.sourceRecordType === 'report' && <StatusChip status={rep.statusColor || 'NORMAL'} lang={lang} />}
+                        {rep.sourceRecordType === 'report' && rep.statusColor && <StatusChip status={rep.statusColor} lang={lang} />}
                       </div>
                       <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-[#5B6B7A]">
                         {rep.facilityName && <FacilityBadge lang={lang}
@@ -2216,21 +2312,21 @@ export default function App() {
                   </div>
                   {rep.sourceRecordType === 'report' && (
                     <div className="flex flex-wrap items-center gap-2">
-                      {rep.fileDataUrl && <a href={rep.fileDataUrl} target="_blank" rel="noreferrer" className="min-h-[36px] px-3 inline-flex items-center rounded-xl border border-[#DDE7EA] bg-white text-xs font-bold text-[#0E7C86]">View original report</a>}
+                      {rep.fileDataUrl && <button type="button" onClick={() => openOriginalMedicalFile(rep.fileDataUrl)} className="min-h-[36px] px-3 inline-flex items-center rounded-xl border border-[#DDE7EA] bg-white text-xs font-bold text-[#0E7C86]">View original report</button>}
                       {rep.source === 'PATIENT_UPLOAD' && <button type="button" onClick={() => handleRemovePatientReport(rep.id, rep.title || 'this document')} className="min-h-[36px] px-3 rounded-xl border border-rose-200 bg-white text-xs font-bold text-rose-700 hover:bg-rose-50">Remove my upload</button>}
                       {(rep.uploaderRole === 'doctor' || rep.source === 'DOCTOR_UPLOAD' || rep.source === 'PROVIDER_UPLOAD') ? <>
                         <label className="inline-flex items-center gap-2 text-xs font-semibold text-[#1F2D3D]">
-                          Explain in
-                          <select aria-label="Explanation language" value={reportExplanationLanguage} onChange={(e) => setReportExplanationLanguage(e.target.value as 'en' | 'te')} className="min-h-[36px] px-2 rounded-lg border border-[#DDE7EA] bg-white">
-                            <option value="en">English</option><option value="te">తెలుగు</option>
+                          {ui('Explain in')}
+                          <select aria-label={ui('Explain in')} value={reportExplanationLanguage} onChange={(e) => setReportExplanationLanguage(e.target.value as 'en' | 'te' | 'hi')} className="min-h-[40px] px-2 rounded-lg border border-[#DDE7EA] bg-white">
+                            <option value="en">English</option><option value="te">తెలుగు</option><option value="hi">हिन्दी</option>
                           </select>
                         </label>
-                        <button type="button" onClick={() => requestReportAiExplanation(rep.id)} disabled={summaryLoadingId === rep.id} className="min-h-[36px] px-3 rounded-xl border border-[#DDE7EA] bg-white text-xs font-bold text-[#0E7C86] disabled:opacity-60">
-                          {summaryLoadingId === rep.id ? 'Preparing explanation…' : reportSummaries[rep.id] ? 'Regenerate explanation' : 'Explain with AI'}
+                        <button type="button" onClick={() => requestReportAiExplanation(rep.id)} disabled={summaryLoadingId === rep.id} className="min-h-[44px] px-3 rounded-xl border border-[#DDE7EA] bg-white text-sm font-bold text-[#0E7C86] disabled:opacity-60">
+                          {summaryLoadingId === rep.id ? ui('Preparing explanation…') : reportAiExplanations[`${rep.id}:${reportExplanationLanguage}`] ? ui('Regenerate explanation') : ui('Explain This Report')}
                         </button>
                         <label className="w-full flex items-start gap-2 text-[11px] text-[#5B6B7A]">
-                          <input type="checkbox" checked={externalAiConsent} onChange={(e) => setExternalAiConsent(e.target.checked)} className="mt-0.5 accent-[#0E7C86]" />
-                          I agree to send this report’s extracted text to the configured AI service for explanation.
+                          <input type="checkbox" checked={Boolean(externalAiConsent[rep.id])} onChange={(e) => setExternalAiConsent((current) => ({ ...current, [rep.id]: e.target.checked }))} className="mt-0.5 accent-[#0E7C86]" />
+                          {ui('I agree to send this report’s de-identified text to the configured AI service. I will use fictional demo data only; this local prototype is not approved for real patient records.')}
                         </label>
                       </> : <button type="button" onClick={() => requestReportSummary(rep.id)} disabled={summaryLoadingId === rep.id} className="min-h-[36px] px-3 rounded-xl border border-[#DDE7EA] bg-white text-xs font-bold text-[#0E7C86] disabled:opacity-60">
                         {summaryLoadingId === rep.id ? 'Preparing report facts…' : reportSummaries[rep.id] ? 'Refresh extracted facts' : 'View extracted report facts'}
@@ -2238,6 +2334,26 @@ export default function App() {
                     </div>
                   )}
                   {summaryErrors[rep.id] && <p role="alert" className="text-xs text-red-700">{summaryErrors[rep.id]}</p>}
+                  {reportAiExplanations[`${rep.id}:${reportExplanationLanguage}`] && (() => {
+                    const explanation = reportAiExplanations[`${rep.id}:${reportExplanationLanguage}`];
+                    const readingSections = getReportExplanationSections(explanation);
+                    return (
+                      <section className="p-4 rounded-xl border border-[#A7DDE0] bg-white space-y-3" aria-label={ui('AI-generated explanation')}>
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <h5 className="text-sm font-bold text-[#1F2D3D]">{ui('AI-generated explanation')}</h5>
+                          <button type="button" onClick={() => void copyReportAiExplanation(rep.id, explanation)} className="min-h-[40px] px-3 rounded-lg border border-[#DDE7EA] text-sm font-semibold text-[#0E7C86]">{copiedExplanationId === rep.id ? ui('Copied') : ui('Copy explanation')}</button>
+                        </div>
+                        <div><p className="text-xs font-bold text-[#0E7C86]">{ui('What is this report?')}</p><p className="mt-1 text-sm text-[#1F2D3D] whitespace-pre-wrap">{explanation.whatIsThisReport}</p></div>
+                        <div><p className="text-xs font-bold text-[#0E7C86]">{ui('Main findings')}</p>{explanation.mainFindings.length ? <ul className="mt-1 list-disc pl-5 text-sm text-[#1F2D3D]">{explanation.mainFindings.map((item: string, index: number) => <li key={index}>{item}</li>)}</ul> : <p className="mt-1 text-sm text-[#5B6B7A]">{ui('No values or reference ranges were provided in the report.')}</p>}</div>
+                        <div><p className="text-xs font-bold text-[#0E7C86]">{ui('Important values')}</p>{explanation.importantValues.length ? <ul className="mt-1 list-disc pl-5 text-sm text-[#1F2D3D]">{explanation.importantValues.map((item: any, index: number) => <li key={index}><strong>{item.name}: {item.value}</strong>{item.referenceRange ? ` · ${ui('Reference range')}: ${item.referenceRange}` : ''} · {item.plainMeaning}</li>)}</ul> : <p className="mt-1 text-sm text-[#5B6B7A]">{ui('No values or reference ranges were provided in the report.')}</p>}</div>
+                        <div><p className="text-xs font-bold text-[#0E7C86]">{ui('Medical terms')}</p>{explanation.medicalTerms.length ? <ul className="mt-1 list-disc pl-5 text-sm text-[#1F2D3D]">{explanation.medicalTerms.map((item: any, index: number) => <li key={index}><strong>{item.term}:</strong> {item.meaning}</li>)}</ul> : <p className="mt-1 text-sm text-[#5B6B7A]">{ui('No medical terms were explained in this report.')}</p>}</div>
+                        <div><p className="text-xs font-bold text-[#0E7C86]">{ui('What this report does not establish')}</p><p className="mt-1 text-sm text-[#1F2D3D] whitespace-pre-wrap">{explanation.whatThisDoesNotEstablish}</p></div>
+                        <div><p className="text-xs font-bold text-[#0E7C86]">{ui('Questions for your doctor')}</p>{explanation.questionsForDoctor.length ? <ul className="mt-1 list-disc pl-5 text-sm text-[#1F2D3D]">{explanation.questionsForDoctor.map((item: string, index: number) => <li key={index}>{item}</li>)}</ul> : <p className="mt-1 text-sm text-[#5B6B7A]">{ui('No questions were suggested.')}</p>}</div>
+                        <ReportReadAloudControls sections={readingSections} language={reportExplanationLanguage} uiLang={lang} />
+                        <p className="rounded-lg bg-amber-50 border border-amber-200 p-3 text-xs text-amber-900">{REPORT_EXPLANATION_SAFETY_NOTICE}</p>
+                      </section>
+                    );
+                  })()}
                   {reportSummaries[rep.id] && (
                     <section className="p-3 rounded-xl border border-[#DDE7EA] bg-white space-y-2" aria-label="Medical report summary">
                       <h5 className="text-sm font-bold text-[#1F2D3D]">{reportSummaries[rep.id].aiGenerated ? 'AI-generated explanation' : 'Extracted report facts'}</h5>

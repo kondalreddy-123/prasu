@@ -1,5 +1,6 @@
 import { getMedicalRecordCategory, isMedicalCategoryAuthorized, isMedicalRecordAuthorized, MEDICAL_RECORD_CATEGORIES } from './medicalRecordCategories.ts';
 import { createMedicalReportSummary } from './services/medicalReportSummary.ts';
+import { canExplainDoctorReport } from './services/reportExplanation.js';
 import { findActivePrescriptionDuplicate, normalizePrescriptionText } from './services/prescriptionDuplicates.js';
 import { decidePharmacistPrescriptionRequest, getPharmacistPrescriptionAccess, getPrescriptionDisplayStatus, PHARMACIST_PRESCRIPTION_CATEGORY, revokePharmacistPrescriptionAccess } from './services/pharmacistPrescriptionAccess.js';
 import { clearDemoState, loadDemoState, saveDemoState } from './services/demoLocalStore.js';
@@ -871,19 +872,22 @@ function handleMockApiRequestInternal(endpoint: string, options: ApiRequestOptio
 
   if (/^\/api\/patient\/[^/]+\/reports\/[^/]+\/explanation$/.test(pathname) && method === 'POST') {
     const [, , , patientId, , reportId] = pathname.split('/');
-    if (options.patientId !== patientId) return { ok: false, status: 403, data: { code: 'PATIENT_OWNERSHIP_REQUIRED', error: 'Sign in as the patient who owns this report.' } };
     const report = MOCK_STATE.reports.find((item) => item.id === reportId && item.patientId === patientId);
-    if (!report || !(report.uploaderRole === 'doctor' || report.source === 'DOCTOR_UPLOAD' || report.source === 'PROVIDER_UPLOAD')) {
-      return { ok: false, status: 404, data: { error: 'Doctor-uploaded report not found.' } };
-    }
     let body: any = {};
     try { body = JSON.parse(options.body as string); } catch {}
-    if (!body.externalAiConsent || !['en', 'te'].includes(body.language)) {
-      return { ok: false, status: 400, data: { error: 'Choose English or Telugu and allow external AI processing first.' } };
+    const decision = canExplainDoctorReport({ requestingPatientId: options.patientId, report, externalAiConsent: body.externalAiConsent, language: body.language });
+    if (!decision.ok) {
+      const status = decision.code === 'PATIENT_OWNERSHIP_REQUIRED' ? 403 : decision.code === 'DOCTOR_REPORT_REQUIRED' ? 404 : decision.code === 'REPORT_TEXT_UNAVAILABLE' ? 422 : 400;
+      const error = decision.code === 'PATIENT_OWNERSHIP_REQUIRED' ? 'Only the patient who owns this report can request an explanation.'
+        : decision.code === 'DOCTOR_REPORT_REQUIRED' ? 'Doctor-uploaded report not found.'
+        : decision.code === 'EXTERNAL_AI_CONSENT_REQUIRED' ? 'Please consent before sending de-identified report text to the configured AI service.'
+        : decision.code === 'REPORT_TEXT_UNAVAILABLE' ? 'No supported report text is available. Image and scanned-PDF OCR is not configured.'
+        : 'Choose English, Telugu, or Hindi.';
+      return { ok: false, status, data: { code: decision.code, error } };
     }
-    // There is no authenticated AI backend or server-side model key in this project.
-    // Fail closed: report contents are not forwarded and no fabricated summary is returned.
-    return { ok: false, status: 503, data: { code: 'AI_EXPLANATION_NOT_CONFIGURED', error: 'AI explanations are not configured yet. Your report was not sent to an AI service. You can still view the original report.' } };
+    // The local demo API authorizes the patient-owned doctor report before the
+    // UI forwards this short-lived, de-identified text to the loopback AI service.
+    return { ok: true, status: 200, data: { sourceText: decision.reportText } };
   }
 
   if (/^\/api\/patient\/[^/]+\/reports\/[^/]+\/summary$/.test(pathname) && method === 'POST') {
@@ -1543,7 +1547,7 @@ function handleMockApiRequest(endpoint: string, options: ApiRequestOptions): Api
   const auditCountBefore = MOCK_STATE.auditLogs.length;
   const result = handleMockApiRequestInternal(endpoint, options);
   const method = (options.method || 'GET').toUpperCase();
-  const skipsLocalWrite = endpoint.includes('/api/demo/reset') || endpoint.includes('/api/auth/login');
+  const skipsLocalWrite = endpoint.includes('/api/demo/reset') || endpoint.includes('/api/auth/login') || endpoint.endsWith('/explanation');
   const hasNewAudit = MOCK_STATE.auditLogs.length > auditCountBefore;
   if ((method !== 'GET' || hasNewAudit) && result.ok && !skipsLocalWrite) {
     if (!persistDemoStore()) {

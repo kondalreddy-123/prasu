@@ -40,7 +40,35 @@ Browser storage is not encrypted or protected like a medical database. Demo acco
 
 ## Current limitations
 
-- AI explanations for doctor-uploaded reports fail safely because there is no configured AI service; report contents are not sent to an external model.
+- The report explainer can call the optional local OpenAI service when configured. It is a local demo integration only: demo sign-in is simulated, so do not use real patient reports or real patient data. A configured provider may process the de-identified report text under its own terms; the app does not claim a privacy/security review or production authorization.
+- The AI key is read only by the loopback Node service and must never be placed in a `VITE_*` variable. The API is disabled until `OPENAI_API_KEY` is set. It sends no report text when the user has not consented, report ownership fails, or source text is unavailable.
+- Browser read-aloud uses installed Web Speech voices. English, Telugu, and Hindi voices are not present on every Windows/browser setup; HealthPass will not substitute a different language voice.
+- Image and scanned-PDF OCR are not configured. The report explainer uses saved extracted text or the report's textual summary only.
 - Camera QR scanning depends on browser camera support and permission. Manual HealthPass ID lookup remains available.
 - This prototype uses fictional accounts and example data. Pharmacist identity, clinician credentials, and consent are simulations, not verified claims.
 - Supabase migration files remain in `supabase/migrations/` as prior design artifacts only. They are not imported, applied, or used by this local-only app.
+
+## Optional local AI report explanation
+
+Open two Windows Command Prompt windows in the project folder. In the first, set the server-only key and start the loopback AI service:
+
+```cmd
+set OPENAI_API_KEY=your_api_key_here
+set OPENAI_MODEL=gpt-4o-mini
+npm run ai-server
+```
+
+In the second window, start the app:
+
+```cmd
+npm run dev
+```
+
+To run checks:
+
+```cmd
+npm test
+npm run build
+```
+
+The Vite development server proxies the AI route to `127.0.0.1:3031`. Set `REPORT_AI_PORT` to change that port in both windows. `.env.example` lists the variable names but does not load them; set the variables in the server terminal. The AI response is kept in memory only and is not written to browser storage. The AI integration is not included in a production backend or deployment.
