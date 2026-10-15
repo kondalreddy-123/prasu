@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="1160" viewBox="0 0 900 1160" role="img" aria-labelledby="title description">
+  <title id="title">Fictional sample blood test report</title>
+  <desc id="description">Demo only. Fictional patient and laboratory values.</desc>
+  <rect width="900" height="1160" fill="#f4f8f8"/><rect x="70" y="60" width="760" height="1040" rx="24" fill="#fff" stroke="#bfd4d6" stroke-width="3"/>
+  <text x="120" y="145" font-family="Arial,sans-serif" font-size="34" font-weight="700" fill="#0e7c86">HEALTHPASS · FICTIONAL DEMO REPORT</text>
+  <text x="120" y="205" font-family="Arial,sans-serif" font-size="25" fill="#334155">Complete Blood Count (CBC)</text>
+  <text x="120" y="258" font-family="Arial,sans-serif" font-size="19" fill="#64748b">Sample patient: Demo Patient · Report date: 14 Oct 2026</text>
+  <text x="120" y="320" font-family="Arial,sans-serif" font-size="18" font-weight="700" fill="#0f172a">Test</text><text x="465" y="320" font-family="Arial,sans-serif" font-size="18" font-weight="700" fill="#0f172a">Value</text><text x="625" y="320" font-family="Arial,sans-serif" font-size="18" font-weight="700" fill="#0f172a">Reference range</text>
+  <path d="M120 338H780M120 410H780M120 482H780M120 554H780" stroke="#d8e4e5" stroke-width="2"/>
+  <g font-family="Arial,sans-serif" font-size="18" fill="#334155"><text x="120" y="383">Haemoglobin</text><text x="465" y="383">13.8 g/dL</text><text x="625" y="383">12.0 - 15.5</text><text x="120" y="455">Total WBC Count</text><text x="465" y="455">6,800 /cumm</text><text x="625" y="455">4,000 - 11,000</text><text x="120" y="527">Platelet Count</text><text x="465" y="527">2.4 lakhs/cumm</text><text x="625" y="527">1.5 - 4.5</text></g>
+  <rect x="120" y="650" width="660" height="110" rx="14" fill="#fff7e6"/><text x="150" y="696" font-family="Arial,sans-serif" font-size="18" font-weight="700" fill="#854d0e">DEMO DATA ONLY</text><text x="150" y="730" font-family="Arial,sans-serif" font-size="16" fill="#854d0e">All names and results on this sample are fictional.</text>
+</svg>

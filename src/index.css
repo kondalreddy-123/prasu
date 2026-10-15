@@ -1,0 +1,258 @@
+@import "tailwindcss";
+
+/* Compact, role-aware application header */
+.hp-header-inner { min-height: 4.25rem; }
+.hp-brand-mark {
+  width: 2.85rem;
+  height: 2.85rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  border: 1px solid rgba(255,255,255,.76);
+  border-radius: 1rem;
+  color: white;
+  background: linear-gradient(145deg, #20a08c 0%, #0e7c86 55%, #07515c 100%);
+  box-shadow: 0 5px 0 #084c55, 0 8px 15px rgba(14,124,134,.24), inset 0 1px 0 rgba(255,255,255,.65);
+  transform: perspective(180px) rotateY(-8deg) rotateX(4deg);
+}
+.hp-nav-link {
+  min-height: 2.75rem;
+  padding: .6rem .8rem;
+  border: 1px solid transparent;
+  border-radius: .85rem;
+  color: #455468;
+  font-size: .92rem;
+  font-weight: 700;
+  white-space: nowrap;
+  transition: color 140ms ease, background-color 140ms ease, border-color 140ms ease;
+}
+.hp-nav-link:hover { color: #0e7c86; background: #f0f8f8; }
+.hp-nav-link.hp-nav-active { color: #075e65; background: #e9f6f4; border-color: #c4e6df; }
+.hp-nav-link.hp-emergency-link { color: #a82d32; }
+.hp-nav-link.hp-emergency-link:hover, .hp-nav-link.hp-emergency-link.hp-emergency-active { background: #fff1f1; border-color: #fecaca; }
+.hp-header-control {
+  min-height: 2.75rem;
+  padding: .55rem .75rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: .5rem;
+  border: 1px solid #dbe4e8;
+  border-radius: .85rem;
+  background: #fff;
+  color: #334155;
+  font-size: .9rem;
+  font-weight: 700;
+  white-space: nowrap;
+  transition: background-color 140ms ease, border-color 140ms ease;
+}
+.hp-header-control:hover { border-color: #a8d4d2; background: #f5fbfa; }
+.hp-menu-item, .hp-mobile-link {
+  width: 100%;
+  min-height: 2.85rem;
+  padding: .65rem .8rem;
+  display: flex;
+  align-items: center;
+  gap: .55rem;
+  border-radius: .75rem;
+  text-align: left;
+  color: #334155;
+  font-size: .92rem;
+  font-weight: 650;
+  transition: background-color 140ms ease;
+}
+.hp-menu-item:hover, .hp-mobile-link:hover { background: #f0f8f8; color: #075e65; }
+.hp-mobile-link { width: max-content; flex: 0 0 auto; border: 1px solid #e1e9eb; background: #f9fbfb; }
+.hp-mobile-emergency { color: #a82d32; background: #fff7f7; border-color: #f8d7d7; }
+@media (max-width: 639px) {
+  .hp-header-inner { min-height: 4rem; }
+  .hp-brand { gap: .6rem; }
+  .hp-brand-mark { width: 2.55rem; height: 2.55rem; border-radius: .85rem; }
+  .hp-header-control { min-width: 2.75rem; padding: .5rem; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .hp-brand-mark, .hp-nav-link, .hp-header-control, .hp-menu-item, .hp-mobile-link { transition: none; }
+}
+
+@keyframes healthpass-float {
+  0%, 100% { transform: perspective(900px) rotateY(-7deg) translateY(0); }
+  50% { transform: perspective(900px) rotateY(7deg) translateY(-10px); }
+}
+
+@keyframes healthpass-orbit {
+  from { transform: rotateX(62deg) rotateZ(0deg); }
+  to { transform: rotateX(62deg) rotateZ(360deg); }
+}
+
+@keyframes healthpass-share {
+  0%, 100% { transform: translateX(0) scale(1); }
+  50% { transform: translateX(12px) scale(1.08); }
+}
+
+@keyframes hp-walkthrough-float {
+  0%, 100% { transform: perspective(900px) rotateY(-5deg) translateY(0); }
+  50% { transform: perspective(900px) rotateY(5deg) translateY(-7px); }
+}
+@keyframes hp-walkthrough-orbit {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+.hp-walkthrough-card { transform-style: preserve-3d; animation: hp-walkthrough-float 7s ease-in-out infinite; }
+.hp-walkthrough-orbit { animation: hp-walkthrough-orbit 32s linear infinite; }
+.hp-walkthrough-float { animation: healthpass-float 7s ease-in-out infinite; }
+.hp-walkthrough-float-delayed { animation: healthpass-float 7s ease-in-out -3.5s infinite; }
+.hp-walkthrough-copy { animation: hp-walkthrough-enter 180ms ease-out both; }
+@keyframes hp-walkthrough-enter {
+  from { opacity: 0; transform: translateY(5px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.healthpass-float { animation: healthpass-float 6s ease-in-out infinite; transform-style: preserve-3d; }
+.healthpass-orbit { animation: healthpass-orbit 24s linear infinite; transform-style: preserve-3d; }
+.healthpass-doctor-float { animation: healthpass-float 6s ease-in-out -2s infinite; }
+.healthpass-share { animation: healthpass-share 2.4s ease-in-out infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+  .healthpass-float, .healthpass-orbit, .healthpass-doctor-float, .healthpass-share { animation: none; }
+  .hp-walkthrough-card, .hp-walkthrough-orbit, .hp-walkthrough-float, .hp-walkthrough-float-delayed, .hp-walkthrough-copy { animation: none; }
+}
+@media (max-width: 640px) {
+  .hp-walkthrough-card, .hp-walkthrough-orbit, .hp-walkthrough-float, .hp-walkthrough-float-delayed { animation: none; }
+}
+
+/* Slightly larger type across all screens, including the many small labels. */
+@layer utilities {
+  .text-xs { font-size: 0.8125rem; }
+  .text-sm { font-size: 0.9375rem; }
+  .text-base { font-size: 1.0625rem; }
+  [class~="text-[10px]"] { font-size: 0.71875rem; }
+  [class~="text-[11px]"] { font-size: 0.78125rem; }
+}
+
+@layer base {
+  :root {
+    --hp-primary: #0E7C86;
+    --hp-primary-hover: #0A626A;
+    --hp-blue: #1769AA;
+    --hp-bg: #F5F9FA;
+    --hp-surface: #FFFFFF;
+    --hp-border: #DDE7EA;
+    --hp-text: #1F2D3D;
+    --hp-muted: #5B6B7A;
+    --hp-success: #1E8E5A;
+    --hp-warning: #E8A317;
+    --hp-danger: #D32F2F;
+  }
+
+  html {
+    font-family: 'DM Sans', 'Noto Sans', 'Noto Sans Telugu', 'Noto Sans Devanagari',
+      'Noto Sans Tamil', 'Noto Sans Kannada', 'Noto Sans Bengali', 'Noto Nastaliq Urdu',
+      system-ui, -apple-system, sans-serif;
+    background-color: var(--hp-bg);
+    color: var(--hp-text);
+    line-height: 1.55;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  html[dir="rtl"] {
+    font-family: 'Noto Nastaliq Urdu', 'Noto Sans Arabic', 'DM Sans', system-ui, sans-serif;
+    line-height: 1.75;
+  }
+
+  h1, h2, h3, h4, .font-display {
+    font-family: 'Plus Jakarta Sans', 'Noto Sans', 'Noto Sans Telugu', 'Noto Sans Devanagari',
+      'Noto Sans Tamil', 'Noto Sans Kannada', 'Noto Sans Bengali', 'Noto Nastaliq Urdu',
+      system-ui, sans-serif;
+    line-height: 1.35;
+  }
+
+  button, a, input, select, textarea {
+    line-height: 1.45;
+  }
+
+  button:focus-visible,
+  a:focus-visible,
+  input:focus-visible,
+  select:focus-visible,
+  textarea:focus-visible {
+    outline: 3px solid #0E7C86;
+    outline-offset: 2px;
+  }
+}
+
+/* Soft-Clay 3D Hospital Surface System */
+.clay-card {
+  background: #FFFFFF;
+  border: 1px solid #DDE7EA;
+  border-radius: 1.25rem;
+  box-shadow:
+    0 10px 24px -6px rgba(14, 124, 134, 0.07),
+    0 2px 6px -1px rgba(31, 45, 61, 0.04),
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.9);
+  transition: transform 180ms cubic-bezier(0.16, 1, 0.3, 1),
+              box-shadow 180ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.clay-tile {
+  background: linear-gradient(180deg, #FFFFFF 0%, #F8FCFD 100%);
+  border: 1px solid #DDE7EA;
+  border-radius: 1rem;
+  box-shadow:
+    0 4px 10px -2px rgba(14, 124, 134, 0.06),
+    inset 0 1px 0 0 #FFFFFF;
+  transition: transform 160ms ease, border-color 160ms ease;
+}
+
+.clay-tile:hover {
+  transform: translateY(-2px);
+}
+
+.clay-btn-primary {
+  background: linear-gradient(180deg, #118B96 0%, #0E7C86 100%);
+  color: #FFFFFF;
+  border-radius: 0.875rem;
+  box-shadow:
+    0 4px 0 0 #09535A,
+    0 6px 14px -2px rgba(14, 124, 134, 0.28);
+  transition: transform 120ms ease, box-shadow 120ms ease, background-color 120ms ease;
+}
+
+.clay-btn-primary:hover {
+  background: linear-gradient(180deg, #0E7C86 0%, #0A626A 100%);
+}
+
+.clay-btn-primary:active {
+  transform: translateY(2px);
+  box-shadow: 0 2px 0 0 #09535A;
+}
+
+.clay-btn-danger {
+  background: linear-gradient(180deg, #E53935 0%, #D32F2F 100%);
+  color: #FFFFFF;
+  border-radius: 0.875rem;
+  box-shadow:
+    0 4px 0 0 #9A1B1B,
+    0 6px 14px -2px rgba(211, 47, 47, 0.28);
+  transition: transform 120ms ease, box-shadow 120ms ease;
+}
+
+.clay-btn-danger:active {
+  transform: translateY(2px);
+  box-shadow: 0 2px 0 0 #9A1B1B;
+}
+
+/* High Contrast Daylight Clinic Mode */
+.high-contrast {
+  --hp-bg: #FFFFFF;
+  --hp-surface: #FFFFFF;
+  --hp-border: #0F172A;
+  --hp-text: #000000;
+  --hp-muted: #1E293B;
+}
+
+.high-contrast .clay-card,
+.high-contrast .clay-tile {
+  border: 2px solid #0F172A;
+  box-shadow: none;
+}

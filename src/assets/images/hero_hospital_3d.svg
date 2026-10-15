@@ -1,0 +1,63 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 500" width="100%" height="100%">
+  <defs>
+    <linearGradient id="skyGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stopColor="#E6FFFA"/>
+      <stop offset="100%" stopColor="#F0FDFA"/>
+    </linearGradient>
+    <linearGradient id="bldgGrad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stopColor="#FFFFFF"/>
+      <stop offset="100%" stopColor="#E2E8F0"/>
+    </linearGradient>
+    <linearGradient id="tealGrad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stopColor="#0E7C86"/>
+      <stop offset="100%" stopColor="#065F67"/>
+    </linearGradient>
+  </defs>
+  <rect width="800" height="500" rx="24" fill="url(#skyGrad)"/>
+  
+  <!-- Hospital Building 3D -->
+  <g transform="translate(180, 80)">
+    <!-- Base shadow -->
+    <ellipse cx="220" cy="360" rx="260" ry="24" fill="#CBD5E1" opacity="0.6"/>
+    <!-- Main block -->
+    <rect x="80" y="80" width="280" height="260" rx="16" fill="url(#bldgGrad)" stroke="#CBD5E1" stroke-width="4"/>
+    <!-- Top tower -->
+    <rect x="150" y="20" width="140" height="70" rx="12" fill="#0E7C86"/>
+    <!-- Red Cross -->
+    <rect x="210" y="38" width="20" height="34" rx="4" fill="#FFFFFF"/>
+    <rect x="203" y="45" width="34" height="20" rx="4" fill="#FFFFFF"/>
+    <rect x="214" y="42" width="12" height="26" rx="2" fill="#E11D48"/>
+    <rect x="207" y="49" width="26" height="12" rx="2" fill="#E11D48"/>
+    
+    <!-- Windows -->
+    <g fill="#99F6E4" opacity="0.8">
+      <rect x="110" y="110" width="40" height="30" rx="6"/>
+      <rect x="170" y="110" width="40" height="30" rx="6"/>
+      <rect x="230" y="110" width="40" height="30" rx="6"/>
+      <rect x="290" y="110" width="40" height="30" rx="6"/>
+
+      <rect x="110" y="160" width="40" height="30" rx="6"/>
+      <rect x="170" y="160" width="40" height="30" rx="6"/>
+      <rect x="230" y="160" width="40" height="30" rx="6"/>
+      <rect x="290" y="160" width="40" height="30" rx="6"/>
+
+      <rect x="110" y="210" width="40" height="30" rx="6"/>
+      <rect x="170" y="210" width="40" height="30" rx="6"/>
+      <rect x="230" y="210" width="40" height="30" rx="6"/>
+      <rect x="290" y="210" width="40" height="30" rx="6"/>
+    </g>
+
+    <!-- Glass Entrance -->
+    <rect x="180" y="270" width="80" height="70" rx="8" fill="#0E7C86" opacity="0.9"/>
+    <line x1="220" y1="270" x2="220" y2="340" stroke="#FFFFFF" stroke-width="2"/>
+  </g>
+
+  <!-- Doctor & Patient Shield Badge -->
+  <g transform="translate(520, 140)">
+    <circle cx="100" cy="100" r="85" fill="#FFFFFF" stroke="#0E7C86" stroke-width="6"/>
+    <path d="M100 45 L145 65 V110 C145 140 100 160 100 160 C100 160 55 140 55 110 V65 Z" fill="url(#tealGrad)"/>
+    <path d="M85 100 L95 110 L120 85" fill="none" stroke="#FFFFFF" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+    <rect x="30" y="195" width="140" height="32" rx="16" fill="#0E7C86"/>
+    <text x="100" y="216" text-anchor="middle" font-family="system-ui, sans-serif" font-size="13" font-weight="bold" fill="#FFFFFF">QR CONSENT PASS</text>
+  </g>
+</svg>

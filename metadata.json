@@ -1,0 +1,6 @@
+{
+  "name": "HealthPass — Patient-Held Consent-Driven Health Record",
+  "description": "QR and ABHA-ready patient-held digital health record with real-time selective consent, instant revocation, clinical allergy and duplicate prescription checks, and a calm 3D hospital interface.",
+  "requestFramePermissions": ["camera", "microphone"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
