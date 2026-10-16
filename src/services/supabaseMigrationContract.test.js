@@ -8,6 +8,7 @@ const core = migration('202610150001_healthpass_core.sql');
 const pharmacist = migration('202610150002_pharmacist_prescription_consent.sql');
 const runtime = migration('202610150003_healthpass_runtime_support.sql');
 const emergency = migration('202610150004_emergency_limited_access.sql');
+const duplicateRecords = migration('202610150005_prevent_duplicate_medical_records.sql');
 
 test('migration order declares the runtime dependencies it extends', () => {
   assert.match(pharmacist, /Depends on 202610150001_healthpass_core\.sql/i);
@@ -49,6 +50,17 @@ test('consultation writes serialize per patient and compare clinically meaningfu
   }
   assert.match(runtime, /with ordinality[\s\S]*?a\.idx\s*<\s*b\.idx/i);
   assert.equal([...runtime.matchAll(/create or replace function public\.get_consented_prescriptions\(/gi)].length, 1);
+});
+
+test('health record duplicate trigger matches the same event and serializes concurrent inserts', () => {
+  assert.match(duplicateRecords, /before insert on public\.health_records/i);
+  assert.match(duplicateRecords, /pg_advisory_xact_lock/i);
+  assert.match(duplicateRecords, /sourceRecordId|accessionNumber/i);
+  assert.match(duplicateRecords, /documentFingerprint|sourceFingerprint/i);
+  assert.match(duplicateRecords, /coalesce\(r\.record_date, r\.created_at::date\)[\s\S]*?coalesce\(p_record_date, current_date\)/i);
+  assert.match(duplicateRecords, /r\.patient_user_id = p_patient_user_id[\s\S]*?r\.category = p_category/i);
+  assert.match(duplicateRecords, /find_duplicate_health_record[\s\S]*?auth\.uid\(\) = p_patient_user_id[\s\S]*?g\.status = 'ACTIVE'[\s\S]*?g\.expires_at > now\(\)/i);
+  assert.match(duplicateRecords, /errcode = '23505'/i);
 });
 
 test('emergency lookup requires a verified doctor, matching HealthPass ID and birth date, reason, and incapacity attestation', () => {

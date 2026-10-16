@@ -2,6 +2,7 @@ import { getMedicalRecordCategory, isMedicalCategoryAuthorized, isMedicalRecordA
 import { createMedicalReportSummary } from './services/medicalReportSummary.ts';
 import { canExplainDoctorReport } from './services/reportExplanation.js';
 import { findActivePrescriptionDuplicate, normalizePrescriptionText } from './services/prescriptionDuplicates.js';
+import { findMedicalRecordDuplicate } from './services/medicalRecordDuplicates.js';
 import { decidePharmacistPrescriptionRequest, getPharmacistPrescriptionAccess, getPrescriptionDisplayStatus, PHARMACIST_PRESCRIPTION_CATEGORY, revokePharmacistPrescriptionAccess } from './services/pharmacistPrescriptionAccess.js';
 import { clearDemoState, loadDemoState, saveDemoState } from './services/demoLocalStore.js';
 import { routeApiRequest } from './services/apiBackendRouting.js';
@@ -752,12 +753,15 @@ function handleMockApiRequestInternal(endpoint: string, options: ApiRequestOptio
     const report = {
       id: `rep-${Date.now()}`, patientId,
       title, category: 'Lab reports',
+      reportDate: body.reportDate || new Date().toISOString().slice(0, 10),
       medicalCategory: MEDICAL_RECORD_CATEGORIES.includes(body.medicalCategory) ? body.medicalCategory : getMedicalRecordCategory({ title: body.title || body.testName, resultSummary: body.resultSummary, category: 'Lab reports' }),
       resultSummary, statusColor: 'UNVERIFIED',
       facilityName: 'District Hospital Diagnostic Lab, Vijayawada',
       facilityLevel: 'DISTRICT', facilityType: 'District Hospital', source: 'LAB_UPLOAD',
       uploaderId: options.labId, uploaderRole: 'lab', uploadedAt: new Date().toISOString(), verificationStatus: 'LAB_UPLOADED',
     };
+    const duplicate = findMedicalRecordDuplicate(patientId, report, MOCK_STATE.reports);
+    if (duplicate) return { ok: false, status: 409, data: { code: 'DUPLICATE_MEDICAL_RECORD', error: 'A matching active medical record already exists. Please open the existing record instead of creating another.', existingRecordId: duplicate.id, existingRecord: duplicate } };
     MOCK_STATE.reports.unshift(report);
     return { ok: true, status: 201, data: { report } };
   }
@@ -779,6 +783,8 @@ function handleMockApiRequestInternal(endpoint: string, options: ApiRequestOptio
       prescriptionPeriod: isPrescriptionDocument ? 'UNCLASSIFIED' : undefined,
       prescriptionMetadataCorrections: {},
     };
+    const duplicate = findMedicalRecordDuplicate(patientId, report, MOCK_STATE.reports);
+    if (duplicate) return { ok: false, status: 409, data: { code: 'DUPLICATE_MEDICAL_RECORD', error: 'A matching active medical record already exists. Please open the existing record instead of creating another.', existingRecordId: duplicate.id, existingRecord: duplicate } };
     MOCK_STATE.reports.unshift(report);
     return { ok: true, status: 201, data: { report } };
   }
@@ -960,6 +966,8 @@ function handleMockApiRequestInternal(endpoint: string, options: ApiRequestOptio
       verificationStatus: body.confirmedByUser ? 'PATIENT_REVIEWED' : 'UNVERIFIED',
       prescriptionPeriod: isPrescriptionDocument ? 'UNCLASSIFIED' : undefined, prescriptionMetadataCorrections: {},
     };
+    const duplicate = findMedicalRecordDuplicate(patientId, report, MOCK_STATE.reports);
+    if (duplicate) return { ok: false, status: 409, data: { code: 'DUPLICATE_MEDICAL_RECORD', error: 'A matching active medical record already exists. Please open the existing record instead of creating another.', existingRecordId: duplicate.id, existingRecord: duplicate } };
     MOCK_STATE.reports.unshift(report);
     return { ok: true, status: 201, data: { report } };
   }
@@ -977,8 +985,19 @@ function handleMockApiRequestInternal(endpoint: string, options: ApiRequestOptio
   if (pathname.includes('/patient/') && pathname.endsWith('/medicines') && method === 'POST') {
     let body: any = {};
     try { body = JSON.parse(options.body as string); } catch {}
-    const medicine = { id: `med-${Date.now()}`, patientId: options.patientId || 'pat-1',
-      name: body.name || 'Medicine', strength: body.strength || '', dosage: 'As reported',
+    const patientId = pathname.split('/')[3] || options.patientId || 'pat-1';
+    if (options.patientId !== patientId) return { ok: false, status: 403, data: { error: 'The signed-in patient does not own this medication list.' } };
+    const name = String(body.name || '').trim();
+    const strength = String(body.strength || '').trim();
+    if (!name) return { ok: false, status: 400, data: { error: 'Enter a medicine name.' } };
+    const inactiveStatuses = new Set(['stopped', 'discontinued', 'cancelled', 'canceled', 'expired', 'completed', 'historical', 'revoked', 'archived']);
+    const duplicate = MOCK_STATE.medicines.find((item: any) => item.patientId === patientId &&
+      normalizePrescriptionText(item.name) === normalizePrescriptionText(name) &&
+      normalizePrescriptionText(item.strength) === normalizePrescriptionText(strength) &&
+      !inactiveStatuses.has(normalizePrescriptionText(item.computedStatus || item.status)));
+    if (duplicate) return { ok: false, status: 409, data: { code: 'DUPLICATE_MEDICINE', error: `${name}${strength ? ` ${strength}` : ''} is already on this patient's medication list.`, existingMedicineId: duplicate.id } };
+    const medicine = { id: `med-${Date.now()}`, patientId,
+      name, strength, dosage: 'As reported',
       route: 'Oral', frequency: { morning: 0, noon: 0, night: 0 }, durationDays: 0,
       daysRemaining: 0, computedStatus: 'SELF_REPORTED', source: 'SELF_REPORTED', prescriberName: 'Patient reported' };
     MOCK_STATE.medicines.unshift(medicine);
@@ -1066,11 +1085,27 @@ function handleMockApiRequestInternal(endpoint: string, options: ApiRequestOptio
     if (candidates.some((med: any) => !String(med?.name || '').trim() || !String(med?.strength || '').trim() || !String(med?.dosage || '').trim() || !String(med?.route || '').trim())) {
       return { ok: false, status: 400, data: { code: 'PRESCRIPTION_VALIDATION_ERROR', error: 'Enter a medication name, strength, dosage, and route for every prescribed medicine.' } };
     }
+    const idempotencyKey = String(body.idempotencyKey || '').trim();
+    if (idempotencyKey) {
+      const existingVisit = MOCK_STATE.visits.find((item: any) => item.patientId === patientId && item.idempotencyKey === idempotencyKey);
+      if (existingVisit) {
+        const existingPrescription = MOCK_STATE.prescriptions.find((item: any) => item.consultationId === existingVisit.id) || null;
+        return { ok: true, status: 200, data: { success: true, consultationRecorded: true, visit: existingVisit, prescription: existingPrescription, idempotentReplay: true } };
+      }
+    }
+    const encounterDate = new Date().toISOString().slice(0, 10);
+    const eventSummary = `${String(body.chiefComplaint || '').trim()}\n${String(body.clinicalNotes || '').trim()}`.trim();
+    const existingVisit = findMedicalRecordDuplicate(patientId, {
+      idempotencyKey, medicalCategory: 'Consultation History', title: body.diagnosis || 'Consultation',
+      resultSummary: eventSummary, reportDate: encounterDate, facilityName: grant.facilityName,
+    }, MOCK_STATE.visits.map((item: any) => ({ ...item, title: item.diagnosis || 'Consultation', resultSummary: `${String(item.chiefComplaint || '').trim()}\n${String(item.clinicalNotes || '').trim()}`.trim(), reportDate: item.recordDate || item.date })));
+    if (existingVisit) return { ok: false, status: 409, data: { code: 'DUPLICATE_MEDICAL_RECORD', error: 'A matching active medical record already exists. Please open the existing record instead of creating another.', existingRecordId: existingVisit.id, existingRecord: existingVisit } };
     // Demo persistence is synchronous, so this check and the following writes run atomically
     // within this JavaScript context. A production server must repeat this transactionally.
     const visit = {
       id: `visit-${Date.now()}`, patientId, medicalCategory: 'Consultation History',
       date: new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }),
+      recordDate: encounterDate, idempotencyKey,
       diagnosis: body.diagnosis || 'Consultation', chiefComplaint: body.chiefComplaint || '',
       clinicalNotes: body.clinicalNotes || '', doctorName: grant.doctorName,
       facilityName: grant.facilityName, facilityLevel: grant.facilityLevel,

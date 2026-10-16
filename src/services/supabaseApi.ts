@@ -8,9 +8,9 @@ const result = (ok: boolean, status: number, data: any, consentError?: any) => (
 const bodyOf = (options: Options) => {
   try { return options.body ? JSON.parse(String(options.body)) : {}; } catch { return {}; }
 };
-const statusFor = (error: any) => error?.code === '42501' || error?.status === 403 ? 403 : error?.code === 'P0002' || error?.code === 'PGRST116' ? 404 : 400;
+const statusFor = (error: any) => error?.code === '42501' || error?.status === 403 ? 403 : error?.code === 'P0002' || error?.code === 'PGRST116' ? 404 : error?.code === '23505' ? 409 : 400;
 const failed = (error: any) => result(false, statusFor(error), {
-  code: statusFor(error) === 403 ? 'NO_CONSENT' : undefined,
+  code: statusFor(error) === 403 ? 'NO_CONSENT' : statusFor(error) === 409 ? 'DUPLICATE_MEDICAL_RECORD' : undefined,
   error: error?.message || 'The Supabase request failed.',
   message: error?.message || 'The Supabase request failed.',
 });
@@ -213,6 +213,24 @@ async function createStoredRecord(rpc: string, args: Record<string, any>, patien
   return { record: { ...mapRecord(row, patientId), fileDataUrl: originalUrl } };
 }
 
+async function findDuplicateHealthRecord(patientId: string, category: string, title: string, summary: string, recordDate: string | null, payload: any) {
+  const { data, error } = await requireSupabase().rpc('find_duplicate_health_record', {
+    p_patient_user_id: patientId, p_category: category, p_title: title, p_summary: summary || '',
+    p_record_date: recordDate || null, p_record_payload: payload || {},
+  });
+  if (error) throw error;
+  return Array.isArray(data) ? data[0] : data;
+}
+
+function duplicateRecordResult(row: any, patientId: string) {
+  return result(false, 409, {
+    code: 'DUPLICATE_MEDICAL_RECORD',
+    error: 'A matching active medical record already exists. Please open the existing record instead of creating another.',
+    existingRecordId: row.id,
+    report: mapRecord(row, patientId),
+  });
+}
+
 export async function handleSupabaseApiRequest(endpoint: string, options: Options = {}) {
   try {
     const client = requireSupabase();
@@ -318,8 +336,11 @@ export async function handleSupabaseApiRequest(endpoint: string, options: Option
       const patientId = patientReportMatch[1];
       if (await userId() !== patientId) return result(false, 403, { error: 'Only the patient can add their own report.' });
       const category = MEDICAL_RECORD_CATEGORIES.includes(body.medicalCategory) ? body.medicalCategory : getMedicalRecordCategory(body);
+      const recordDate = body.reportDate || body.extractedFields?.reportDate || null;
+      const duplicate = await findDuplicateHealthRecord(patientId, category, body.title, body.resultSummary || '', recordDate, body);
+      if (duplicate) return duplicateRecordResult(duplicate, patientId);
       const created = await createStoredRecord('create_patient_health_record', {
-        p_category: category, p_title: body.title, p_summary: body.resultSummary || '', p_record_date: body.extractedFields?.reportDate || null,
+        p_category: category, p_title: body.title, p_summary: body.resultSummary || '', p_record_date: recordDate,
         p_record_payload: body, p_storage_path: null,
       }, patientId, body.fileDataUrl);
       return result(true, 201, { report: created.record, warning: created.warning });
@@ -353,9 +374,12 @@ export async function handleSupabaseApiRequest(endpoint: string, options: Option
     if (/^\/api\/provider\/patient\/[^/]+\/reports$/.test(path) && method === 'POST') {
       const patientId = path.split('/')[4];
       const category = MEDICAL_RECORD_CATEGORIES.includes(body.medicalCategory) ? body.medicalCategory : getMedicalRecordCategory(body);
+      const recordDate = body.reportDate || body.extractedFields?.reportDate || null;
+      const duplicate = await findDuplicateHealthRecord(patientId, category, body.title, body.resultSummary || '', recordDate, body);
+      if (duplicate) return duplicateRecordResult(duplicate, patientId);
       const created = await createStoredRecord('create_provider_health_record', {
         p_patient_user_id: patientId, p_category: category, p_title: body.title,
-        p_summary: body.resultSummary || '', p_record_date: body.extractedFields?.reportDate || null,
+        p_summary: body.resultSummary || '', p_record_date: recordDate,
         p_record_payload: body, p_storage_path: null,
       }, patientId, body.fileDataUrl);
       return created.warning ? result(true, 201, { report: created.record, warning: created.warning }) : result(true, 201, { report: created.record });
@@ -436,9 +460,12 @@ export async function handleSupabaseApiRequest(endpoint: string, options: Option
 
     if (path === '/api/lab/reports' && method === 'POST') {
       const identity = await identityForHealthPassId(body.healthPassId);
+      const recordPayload = body.recordPayload || {};
+      const duplicate = await findDuplicateHealthRecord(identity.patient_user_id, 'Laboratory Reports', body.title, body.resultSummary || '', body.reportDate || null, recordPayload);
+      if (duplicate) return duplicateRecordResult(duplicate, identity.patient_user_id);
       const { data, error } = await client.rpc('create_lab_health_record', {
         p_patient_user_id: identity.patient_user_id, p_title: body.title, p_summary: body.resultSummary || '',
-        p_record_date: body.reportDate || null, p_record_payload: body.recordPayload || {}, p_storage_path: null,
+        p_record_date: body.reportDate || null, p_record_payload: recordPayload, p_storage_path: null,
       });
       if (error) throw error;
       return result(true, 201, { report: mapRecord(data, identity.patient_user_id) });

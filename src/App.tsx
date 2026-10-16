@@ -480,6 +480,9 @@ export default function App() {
   const [showSelfMedForm, setShowSelfMedForm] = useState(false);
   const [selfMedName, setSelfMedName] = useState('');
   const [selfMedStrength, setSelfMedStrength] = useState('500 mg');
+  const [selfMedError, setSelfMedError] = useState('');
+  const [selfMedSaving, setSelfMedSaving] = useState(false);
+  const [existingMedicineId, setExistingMedicineId] = useState('');
   const [prescriptionSearch, setPrescriptionSearch] = useState('');
   const [prescriptionDateFrom, setPrescriptionDateFrom] = useState('');
   const [prescriptionDateTo, setPrescriptionDateTo] = useState('');
@@ -530,6 +533,7 @@ export default function App() {
   const [labSaveBusy, setLabSaveBusy] = useState(false);
   const [labTestName, setLabTestName] = useState('HbA1c & Fasting Lipid Panel');
   const [labResultSummary, setLabResultSummary] = useState('HbA1c: 5.7% (Normal) · LDL: 94 mg/dL');
+  const [labReportDate, setLabReportDate] = useState(new Date().toISOString().slice(0, 10));
   const [adminData, setAdminData] = useState<any | null>(null);
 
   // Toast / Status Banner
@@ -1122,6 +1126,7 @@ export default function App() {
         doctorId: activeDoctorId,
         title: docReportTitle,
         testName: docReportTitle,
+        reportDate: new Date().toISOString().slice(0, 10),
         category: docReportCategory,
         resultSummary: docReportSummary || 'Uploaded by consulting doctor at point of care.',
       }),
@@ -1191,7 +1196,7 @@ export default function App() {
     setLabSaveBusy(true);
     const result = await apiRequest('/api/lab/reports', {
       method: 'POST', labId: loggedInUser.id,
-      body: JSON.stringify({ healthPassId: labPatientIdentity.healthPassId, title: labTestName, resultSummary: labResultSummary }),
+      body: JSON.stringify({ healthPassId: labPatientIdentity.healthPassId, title: labTestName, reportDate: labReportDate, resultSummary: labResultSummary }),
       suppressGlobal403: true,
     });
     setLabSaveBusy(false);
@@ -1241,12 +1246,21 @@ export default function App() {
 
   const handleAddSelfReportedMed = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (selfMedSaving) return;
     if (!selfMedName.trim()) return;
+    setSelfMedError('');
+    setExistingMedicineId('');
+    setSelfMedSaving(true);
     const result = await apiRequest(`/api/patient/${activePatientId}/medicines`, {
       method: 'POST', patientId: activePatientId,
       body: JSON.stringify({ name: selfMedName, strength: selfMedStrength }), suppressGlobal403: true,
     });
-    if (!result.ok) { showToast(result.data?.error || 'Could not add this medicine.'); return; }
+    setSelfMedSaving(false);
+    if (!result.ok) {
+      setSelfMedError(result.data?.error || 'Could not add this medicine.');
+      setExistingMedicineId(result.data?.existingMedicineId || '');
+      return;
+    }
     setSelfMedName('');
     setShowSelfMedForm(false);
     await fetchPatientWallet(activePatientId);
@@ -1258,7 +1272,7 @@ export default function App() {
     if (!newReportTitle.trim()) return;
     const result = await apiRequest('/api/patient/reports', {
       method: 'POST', patientId: activePatientId,
-      body: JSON.stringify({ title: newReportTitle, category: newReportCategory, resultSummary: newReportSummary }),
+      body: JSON.stringify({ title: newReportTitle, category: newReportCategory, reportDate: new Date().toISOString().slice(0, 10), resultSummary: newReportSummary }),
       suppressGlobal403: true,
     });
     if (!result.ok) { showToast(result.data?.error || 'Could not upload this document.'); return; }
@@ -2117,6 +2131,14 @@ export default function App() {
               </button>
             </div>
 
+            {showSelfMedForm && <form onSubmit={handleAddSelfReportedMed} className="clay-card p-4 flex flex-wrap items-end gap-3" aria-label={ui('Add self-reported medicine')}>
+              <label className="flex-1 min-w-[190px] text-xs font-semibold text-[#5B6B7A]">{ui('Medicine name')}<input value={selfMedName} onChange={(event) => setSelfMedName(event.target.value)} required maxLength={200} className="block mt-1 w-full min-h-[42px] rounded-xl border border-[#DDE7EA] bg-white px-3 text-sm text-[#1F2D3D]" /></label>
+              <label className="w-full sm:w-40 text-xs font-semibold text-[#5B6B7A]">{ui('Strength')}<input value={selfMedStrength} onChange={(event) => setSelfMedStrength(event.target.value)} maxLength={100} className="block mt-1 w-full min-h-[42px] rounded-xl border border-[#DDE7EA] bg-white px-3 text-sm text-[#1F2D3D]" /></label>
+              <button type="submit" disabled={selfMedSaving} className="min-h-[42px] rounded-xl clay-btn-primary px-4 text-xs font-bold disabled:opacity-50">{selfMedSaving ? ui('Saving…') : ui('Save medicine')}</button>
+              <button type="button" onClick={() => { setShowSelfMedForm(false); setSelfMedError(''); }} className="min-h-[42px] rounded-xl border border-[#DDE7EA] bg-white px-4 text-xs font-bold">{ui('Cancel')}</button>
+              {selfMedError && <p role="alert" className="w-full text-xs font-semibold text-red-700">{selfMedError} {existingMedicineId && <button type="button" onClick={() => document.getElementById(`medicine-${existingMedicineId}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' })} className="underline font-bold">{ui('View Existing Record')}</button>}</p>}
+            </form>}
+
             <section className="clay-card p-4 sm:p-5 space-y-3">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div><h3 className="text-base font-bold text-[#1F2D3D]">{ui('Prescription Documents')}</h3><p className="text-xs text-[#5B6B7A]">{ui('Original files stay unchanged. Current or historical status is only set when you choose it.')}</p></div>
@@ -2157,13 +2179,7 @@ export default function App() {
 
             <div className="space-y-3">
               {activeMeds.map((med: any) => (
-                <RxSlipCard
-                  key={med.id}
-                  med={med}
-                  lang={lang}
-                  isPatientView={true}
-                  onPatientAction={handlePatientMedAction}
-                />
+                <div id={`medicine-${med.id}`} key={med.id}><RxSlipCard med={med} lang={lang} isPatientView={true} onPatientAction={handlePatientMedAction} /></div>
               ))}
             </div>
 
@@ -2279,7 +2295,7 @@ export default function App() {
               {filteredMedicalRecords.length === 0 ? (
                 <div className="clay-card p-5 text-center text-sm text-[#5B6B7A]">{ui('No medical records match these filters.')}</div>
               ) : filteredMedicalRecords.map((rep: any) => (
-                <div key={rep.id} className="clay-card p-4 sm:p-5 space-y-2.5">
+                <div id={`medical-record-${rep.id}`} key={rep.id} className="clay-card p-4 sm:p-5 space-y-2.5">
                   <div className="flex flex-wrap items-start justify-between gap-2">
                     <div>
                       <div className="flex flex-wrap items-center gap-2">
@@ -3276,6 +3292,10 @@ export default function App() {
                   className="w-full min-h-[100px] px-3 py-2 rounded-xl border border-[#DDE7EA] text-sm font-mono disabled:bg-slate-50"
                 />
               </div>
+              <div>
+                <label htmlFor="lab-report-date" className="block text-sm font-bold text-[#1F2D3D] mb-1">Report date</label>
+                <input id="lab-report-date" type="date" required value={labReportDate} onChange={(e) => setLabReportDate(e.target.value)} disabled={!labPatientIdentity || labAccessStatus !== 'GRANTED' || labSaveBusy} className="w-full min-h-[44px] px-3 py-1.5 rounded-xl border border-[#DDE7EA] text-sm disabled:bg-slate-50" />
+              </div>
               <button
                 type="submit"
                 disabled={!labPatientIdentity || labAccessStatus !== 'GRANTED' || labSaveBusy || !labTestName.trim() || !labResultSummary.trim()}
@@ -3547,6 +3567,15 @@ export default function App() {
           lang={lang}
           initialReportType={prescriptionUploadMode ? 'Prescription' : undefined}
           onClose={() => { setShowPatientOcrModal(false); setPrescriptionUploadMode(false); }}
+          onViewExistingRecord={(recordId) => {
+            setShowPatientOcrModal(false);
+            setPrescriptionUploadMode(false);
+            setMode('PATIENT');
+            setPatientTab('REPORTS');
+            setSelectedMedicalRecordCategory(null);
+            setMedicalRecordSearch('');
+            window.setTimeout(() => document.getElementById(`medical-record-${recordId}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 250);
+          }}
           onSaved={(savedRep) => {
             setShowPatientOcrModal(false);
             setPrescriptionUploadMode(false);

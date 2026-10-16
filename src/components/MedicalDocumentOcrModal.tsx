@@ -34,6 +34,7 @@ interface MedicalDocumentOcrModalProps {
   lang: SupportedLang;
   onClose: () => void;
   onSaved: (savedReport: any) => void;
+  onViewExistingRecord?: (recordId: string) => void;
   onRevoked403?: (code: string, message: string) => void;
   initialReportType?: 'Prescription';
 }
@@ -81,6 +82,7 @@ export const MedicalDocumentOcrModal: React.FC<MedicalDocumentOcrModalProps> = (
   lang,
   onClose,
   onSaved,
+  onViewExistingRecord,
   onRevoked403,
   initialReportType,
 }) => {
@@ -89,6 +91,9 @@ export const MedicalDocumentOcrModal: React.FC<MedicalDocumentOcrModalProps> = (
   const [extracting, setExtracting] = useState(false);
   const [progress, setProgress] = useState(0);
   const [validationError, setValidationError] = useState<string | null>(null);
+  const [existingRecordId, setExistingRecordId] = useState<string | null>(null);
+  const [existingRecord, setExistingRecord] = useState<any>(null);
+  const [showExistingRecordPreview, setShowExistingRecordPreview] = useState(false);
   const [revokedBanner, setRevokedBanner] = useState<string | null>(null);
 
   // Original document state
@@ -305,6 +310,10 @@ export const MedicalDocumentOcrModal: React.FC<MedicalDocumentOcrModalProps> = (
 
   const handleSaveVerifiedDocument = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (saving) return;
+    setExistingRecordId(null);
+    setExistingRecord(null);
+    setShowExistingRecordPreview(false);
     setValidationError(null);
     setRevokedBanner(null);
 
@@ -387,6 +396,10 @@ export const MedicalDocumentOcrModal: React.FC<MedicalDocumentOcrModalProps> = (
         }
         if (!result.ok) {
           setValidationError(result.data?.error || 'Could not save document.');
+          if (result.data?.code === 'DUPLICATE_MEDICAL_RECORD') {
+            setExistingRecordId(result.data.existingRecordId || null);
+            setExistingRecord(result.data.existingRecord || result.data.report || null);
+          }
           return;
         }
         onSaved(result.data.report);
@@ -397,6 +410,10 @@ export const MedicalDocumentOcrModal: React.FC<MedicalDocumentOcrModalProps> = (
         });
         if (!result.ok) {
           setValidationError(result.data?.error || 'Could not save document.');
+          if (result.data?.code === 'DUPLICATE_MEDICAL_RECORD') {
+            setExistingRecordId(result.data.existingRecordId || null);
+            setExistingRecord(result.data.existingRecord || result.data.report || null);
+          }
           return;
         }
         onSaved(result.data.report);
@@ -452,8 +469,13 @@ export const MedicalDocumentOcrModal: React.FC<MedicalDocumentOcrModalProps> = (
           <div className="rounded-xl bg-[#FEF2F2] border border-[#D32F2F] p-3 text-xs font-bold text-[#D32F2F] flex items-center gap-2">
             <AlertTriangle className="w-4 h-4 shrink-0" />
             <span>{ui(validationError)}</span>
+            {existingRecordId && <button type="button" onClick={() => onViewExistingRecord ? onViewExistingRecord(existingRecordId) : setShowExistingRecordPreview(true)} className="ml-auto min-h-[36px] shrink-0 rounded-lg border border-[#0E7C86] bg-white px-3 text-xs font-bold text-[#0E7C86]">{ui('View Existing Record')}</button>}
           </div>
         )}
+        {showExistingRecordPreview && existingRecord && <section role="dialog" aria-label={ui('Existing medical record')} className="rounded-xl border border-[#A7DDE0] bg-[#F0FAFA] p-4 space-y-2">
+          <div className="flex items-start justify-between gap-3"><div><h3 className="text-sm font-bold text-[#1F2D3D]">{existingRecord.title || existingRecord.diagnosis || ui('Existing medical record')}</h3><p className="text-xs text-[#5B6B7A]">{existingRecord.medicalCategory || existingRecord.category || 'Consultation History'} · {existingRecord.reportDate || existingRecord.recordDate || existingRecord.date || ui('Date unavailable')}</p></div><button type="button" onClick={() => setShowExistingRecordPreview(false)} className="min-h-[34px] rounded-lg border border-[#DDE7EA] bg-white px-3 text-xs font-bold text-[#1F2D3D]">{ui('Close')}</button></div>
+          <p className="text-sm text-[#1F2D3D] whitespace-pre-wrap">{existingRecord.resultSummary || existingRecord.summary || existingRecord.clinicalNotes || ui('No summary is available for this record.')}</p>
+        </section>}
 
         <div className="p-4 rounded-2xl bg-[#F5F9FA] border border-[#DDE7EA] space-y-3">
           <div className="flex flex-wrap items-center justify-between gap-3">
