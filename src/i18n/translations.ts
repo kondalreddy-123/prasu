@@ -1,7 +1,7 @@
 export type SupportedLang = 'EN' | 'TE' | 'HI' | 'TA' | 'KN' | 'MR' | 'BN' | 'UR';
 
-export const SUPPORTED_LANGUAGES: SupportedLang[] = ['EN', 'TE', 'HI'];
-export const PRIMARY_UI_LANGUAGES: SupportedLang[] = ['EN', 'TE', 'HI'];
+export const SUPPORTED_LANGUAGES: SupportedLang[] = ['EN', 'TE', 'HI', 'TA', 'KN', 'MR', 'BN', 'UR'];
+export const PRIMARY_UI_LANGUAGES: SupportedLang[] = ['EN', 'TE', 'HI', 'TA', 'KN', 'MR', 'BN', 'UR'];
 
 export interface LanguageMeta {
   code: SupportedLang;
@@ -50,6 +50,9 @@ export const TRANSLATIONS: Record<SupportedLang, Record<string, string>> = {
     myMedicines: 'My Medicines',
     myQr: 'My QR Pass',
     myReports: 'My Reports',
+    reportAnalytics: 'Report Analytics',
+    doctorTools: 'Doctor Tools',
+    opdQueue: 'OPD Queue',
     myConsent: 'Selective Consent',
     myPrivacy: 'Privacy & Audit',
     requestingAccessTitle: 'is requesting consent to access your health record',
@@ -190,6 +193,9 @@ export const TRANSLATIONS: Record<SupportedLang, Record<string, string>> = {
     myMedicines: 'నా మందులు',
     myQr: 'నా క్యూఆర్ పాస్',
     myReports: 'నా నివేదికలు',
+    reportAnalytics: 'రిపోర్ట్ అనలిటిక్స్',
+    doctorTools: 'డాక్టర్ క్లినికల్ టూల్స్',
+    opdQueue: 'OPD క్యూ',
     myConsent: 'సమ్మతి నియంత్రణ',
     myPrivacy: 'గోప్యత & ఆడిట్',
     requestingAccessTitle: 'మీ ఆరోగ్య రికార్డును చూడటానికి సమ్మతిని కోరుతున్నారు',
@@ -324,6 +330,9 @@ export const TRANSLATIONS: Record<SupportedLang, Record<string, string>> = {
     myMedicines: 'मेरी दवाएं',
     myQr: 'मेरा क्यूआर पास',
     myReports: 'मेरी रिपोर्ट',
+    reportAnalytics: 'रिपोर्ट एनालिटिक्स',
+    doctorTools: 'डॉक्टर क्लीनिकल टूल्स',
+    opdQueue: 'ओपीडी कतार',
     myConsent: 'सहमति नियंत्रण',
     myPrivacy: 'गोपनीयता और ऑडिट',
     requestingAccessTitle: 'आपके स्वास्थ्य रिकॉर्ड को देखने की अनुमति मांग रहे हैं',
@@ -458,6 +467,9 @@ export const TRANSLATIONS: Record<SupportedLang, Record<string, string>> = {
     myMedicines: 'என் மருந்துகள்',
     myQr: 'என் QR பாஸ்',
     myReports: 'என் அறிக்கைகள்',
+    reportAnalytics: 'அறிக்கை பகுப்பாய்வு',
+    doctorTools: 'மருத்துவர் கருவிகள்',
+    opdQueue: 'OPD வரிசை',
     myConsent: 'அனுமதி கட்டுப்பாடு',
     myPrivacy: 'தனியுரிமை மற்றும் தணிக்கை',
     requestingAccessTitle: 'உங்கள் மருத்துவ பதிவை அணுக அனுமதி கேட்கிறார்',
@@ -580,6 +592,9 @@ export const TRANSLATIONS: Record<SupportedLang, Record<string, string>> = {
     myMedicines: 'ನನ್ನ ಔಷಧಿಗಳು',
     myQr: 'ನನ್ನ QR ಪಾಸ್',
     myReports: 'ನನ್ನ ವರದಿಗಳು',
+    reportAnalytics: 'ವರದಿ ವಿಶ್ಲೇಷಣೆ',
+    doctorTools: 'ವೈದ್ಯರ ಪರಿಕರಗಳು',
+    opdQueue: 'OPD ಸರದಿ',
     myConsent: 'ಒಪ್ಪಿಗೆ ನಿಯಂತ್ರಣ',
     myPrivacy: 'ಗೌಪ್ಯತೆ ಮತ್ತು ಆಡಿಟ್',
     requestingAccessTitle: 'ನಿಮ್ಮ ಆರೋಗ್ಯ ದಾಖಲೆಯನ್ನು ವೀಕ್ಷಿಸಲು ಅನುಮತಿ ಕೋರುತ್ತಿದ್ದಾರೆ',
@@ -702,6 +717,9 @@ export const TRANSLATIONS: Record<SupportedLang, Record<string, string>> = {
     myMedicines: 'माझी औषधे',
     myQr: 'माझा QR पास',
     myReports: 'माझे अहवाल',
+    reportAnalytics: 'अहवाल विश्लेषण',
+    doctorTools: 'डॉक्टर क्लिनिकल टूल्स',
+    opdQueue: 'ओपीडी रांग',
     myConsent: 'संमती नियंत्रण',
     myPrivacy: 'गोपनीयता आणि ऑडिट',
     requestingAccessTitle: 'तुमचे आरोग्य रेकॉर्ड पाहण्यासाठी परवानगी मागत आहेत',
@@ -824,6 +842,9 @@ export const TRANSLATIONS: Record<SupportedLang, Record<string, string>> = {
     myMedicines: 'আমার ওষুধ',
     myQr: 'আমার QR পাস',
     myReports: 'আমার রিপোর্ট',
+    reportAnalytics: 'রিপোর্ট অ্যানালিটিক্স',
+    doctorTools: 'ডাক্তার ক্লিনিকাল সরঞ্জাম',
+    opdQueue: 'ওপিডি সারি',
     myConsent: 'সম্মতি নিয়ন্ত্রণ',
     myPrivacy: 'গোপনীয়তা ও নিরীক্ষা',
     requestingAccessTitle: 'আপনার স্বাস্থ্য রেকর্ড দেখতে অনুমতি চাইছেন',
@@ -946,6 +967,9 @@ export const TRANSLATIONS: Record<SupportedLang, Record<string, string>> = {
     myMedicines: 'میری ادویات',
     myQr: 'میرا QR پاس',
     myReports: 'میری رپورٹس',
+    reportAnalytics: 'رپورٹ کا تجزیہ',
+    doctorTools: 'ڈاکٹر کے طبی اوزار',
+    opdQueue: 'او پی ڈی قطار',
     myConsent: 'رضامندی کنٹرول',
     myPrivacy: 'پرائیویسی اور آڈٹ',
     requestingAccessTitle: 'آپ کے ہیلتھ ریکارڈ تک رسائی کی اجازت چاہتے ہیں',
@@ -1059,7 +1083,26 @@ export function tr(key: string, lang: SupportedLang = 'EN'): string {
   return dict[key] || TRANSLATIONS.EN[key] || key;
 }
 
-const UI_PHRASES: Record<string, Partial<Record<'TE' | 'HI', string>>> = {
+const UI_PHRASES: Record<string, Partial<Record<SupportedLang, string>>> = {
+  'My Health': { TE: 'నా ఆరోగ్యం', HI: 'मेरा स्वास्थ्य', TA: 'என் உடல்நலம்', KN: 'ನನ್ನ ಆರೋಗ್ಯ', MR: 'माझे आरोग्य', BN: 'আমার স্বাস্থ্য', UR: 'میری صحت' },
+  'Doctors & Care': { TE: 'వైద్యులు & సంరక్షణ', HI: 'डॉक्टर और देखभाल', TA: 'மருத்துவர்கள் & பராமரிப்பு', KN: 'ವೈದ್ಯರು ಮತ್ತು ಆರೈಕೆ', MR: 'डॉक्टर आणि काळजी', BN: 'ডাক্তার ও পরিচর্যা', UR: 'ڈاکٹرز اور دیکھ بھال' },
+  'Care Services': { TE: 'వైద్య సేవలు', HI: 'देखभाल सेवाएं', TA: 'பராமரிப்பு சேவைகள்', KN: 'ಆರೈಕೆ ಸೇವೆಗಳು', MR: 'काळजी सेवा', BN: 'পরিচর্যা পরিষেবা', UR: 'طبی خدمات' },
+  'More': { TE: 'మరిన్ని', HI: 'अधिक', TA: 'மேலும்', KN: 'ಇನ್ನಷ್ಟು', MR: 'अधिक', BN: 'আরও', UR: 'مزید' },
+  'More Services': { TE: 'మరిన్ని సేవలు', HI: 'अधिक सेवाएं', TA: 'கூடுதல் சேவைகள்', KN: 'ಹೆಚ್ಚಿನ ಸೇವೆಗಳು', MR: 'अधिक सेवा', BN: 'আরও সেবা', UR: 'مزید خدمات' },
+  'Exploration': { TE: 'అన్వేషణ', HI: 'अन्वेषण', TA: 'ஆராய்ச்சி', KN: 'ಅನ್ವೇಷಣೆ', MR: 'शोध', BN: 'অন্বেষণ', UR: 'دریافت' },
+  'Other portals': { TE: 'ఇతర పోర్టల్‌లు', HI: 'अन्य पोर्टल', TA: 'பிற போர்ட்டல்கள்', KN: 'ಇತರ ಪೋರ್ಟಲ್‌ಗಳು', MR: 'इतर पोर्टल', BN: 'অন্যান্য পোর্টাল', UR: 'دیگر پورٹلز' },
+  'Other Portals': { TE: 'ఇతర పోర్టల్‌లు', HI: 'अन्य पोर्टल', TA: 'பிற போர்ட்டல்கள்', KN: 'ಇತರ ಪೋರ್ಟಲ್‌ಗಳು', MR: 'इतर पोर्टल', BN: 'অন্যান্য পোর্টাল', UR: 'دیگر پورٹلز' },
+  'Main Navigation': { TE: 'ప్రధాన నావిగేషన్', HI: 'मुख्य नेविगेशन', TA: 'முதன்மை வழிசெலுத்தல்', KN: 'ಮುಖ್ಯ ಸಂಚರಣೆ', MR: 'मुख्य नेव्हिगेशन', BN: 'প্রধান নেভিগেশন', UR: 'مین نیویگیشن' },
+  'Family Access': { TE: 'కుటుంబ యాక్సెస్', HI: 'पारिवारिक एक्सेस', TA: 'குடும்ப அணுகல்', KN: 'ಕುಟುಂಬ ಪ್ರವೇಶ', MR: 'कौटुंबिक प्रवेश', BN: 'পারিবারিক অ্যাক্সেস', UR: 'خاندانی رسائی' },
+  'Reminders': { TE: 'గుర్తుచేసేవి', HI: 'अनुस्मारक', TA: 'நினைவூட்டல்கள்', KN: 'ಜ್ಞಾಪನೆಗಳು', MR: 'स्मरणपत्रे', BN: 'অনুস্মারক', UR: 'یاد دہانیاں' },
+  'Health Workers': { TE: 'ఆరోగ్య కార్యకర్తలు', HI: 'स्वास्थ्य कार्यकर्ता', TA: 'சுகாதாரப் பணியாளர்கள்', KN: 'ಆರೋಗ್ಯ ಕಾರ್ಯಕರ್ತರು', MR: 'आरोग्य कर्मचारी', BN: 'স্বাস্থ্যকর্মী', UR: 'صحت کے کارکن' },
+  'Help & Settings': { TE: 'సహాయం & సెట్టింగ్‌లు', HI: 'सहायता और सेटिंग्स', TA: 'உதவி மற்றும் அமைப்புகள்', KN: 'ಸಹಾಯ ಮತ್ತು ಸೆಟ್ಟಿಂಗ್‌ಗಳು', MR: 'मदत आणि सेटिंग्ज', BN: 'সাহায্য ও সেটিংস', UR: 'مدد اور سیٹنگز' },
+  'Sign in': { TE: 'సైన్ ఇన్', HI: 'साइन इन', TA: 'உள்நுழையவும்', KN: 'ಸೈನ್ ಇನ್', MR: 'साइन इन करा', BN: 'সাইন ইন করুন', UR: 'سائن ان' },
+  'Report Analytics': { TE: 'రిపోర్ట్ అనలిటిక్స్', HI: 'रिपोर्ट एनालिटिक्स', TA: 'அறிக்கை பகுப்பாய்வு', KN: 'ವರದಿ ವಿಶ್ಲೇಷಣೆ', MR: 'अहवाल विश्लेषण', BN: 'রিপোর্ট অ্যানালিটিক্স', UR: 'رپورٹ کا تجزیہ' },
+  'Active Medicines': { TE: 'ప్రస్తుత మందులు', HI: 'सक्रिय दवाएं', TA: 'செயலில் உள்ள மருந்துகள்', KN: 'ಸಕ್ರಿಯ ಔಷಧಿಗಳು', MR: 'सक्रिय औषधे', BN: 'সক্রিয় ওষুধ', UR: 'جاری ادویات' },
+  'Requests to Review': { TE: 'పరిశీలించాల్సిన అభ్యర్థనలు', HI: 'समीक्षा के लिए अनुरोध', TA: 'மதிப்பாய்வு செய்ய வேண்டிய கோரிக்கைகள்', KN: 'ಪರಿಶೀಲಿಸಬೇಕಾದ ವಿನಂತಿಗಳು', MR: 'पुनरावलोकन विनंत्या', BN: 'পর্যালোচনার জন্য অনুরোধ', UR: 'جائزے کی درخواستیں' },
+  'Doctor Clinical Workbench': { TE: 'డాక్టర్ క్లినికల్ వర్క్‌బెంచ్', HI: 'डॉक्टर क्लीनिकल वर्कबेंच', TA: 'மருத்துவர் மருத்துவ பணித்தளம்', KN: 'ವೈದ್ಯರ ಕ್ಲಿನಿಕಲ್ ವರ್ಕ್‌ಬೆಂಚ್', MR: 'डॉक्टर क्लिनिकल वर्कबेंच', BN: 'ডাক্তার ক্লিনিকাল ওয়ার্কবেঞ্চ', UR: 'ڈاکٹر کا طبی ورک بینچ' },
+  'Clinical Decision Support': { TE: 'క్లినికల్ డెసిషన్ సపోర్ట్', HI: 'क्लिनिकल निर्णय सहायता', TA: 'மருத்துவ முடிவு ஆதரவு', KN: 'ಕ್ಲಿನಿಕಲ್ ನಿರ್ಧಾರ ಬೆಂಬಲ', MR: 'क्लिनिकल निर्णय समर्थन', BN: 'ক্লিনিকাল ডিসিশন সাপোর্ট', UR: 'طبی فیصلہ سازی کی معاونت' },
   'Explain This Report': { TE: 'ఈ నివేదికను వివరించండి', HI: 'इस रिपोर्ट को समझें' },
   'Regenerate explanation': { TE: 'వివరణను మళ్లీ రూపొందించండి', HI: 'व्याख्या फिर से बनाएं' },
   'Preparing explanation…': { TE: 'వివరణ సిద్ధం అవుతోంది…', HI: 'व्याख्या तैयार हो रही है…' },
@@ -1100,25 +1143,14 @@ const UI_PHRASES: Record<string, Partial<Record<'TE' | 'HI', string>>> = {
   'AI explanation notice': { TE: 'AI వివరణ సమాచారం కోసం మాత్రమే. వైద్య నిర్ణయాలకు అర్హత కలిగిన ఆరోగ్య నిపుణుడిని సంప్రదించండి.', HI: 'AI व्याख्या केवल जानकारी के लिए है। चिकित्सा निर्णयों के लिए योग्य स्वास्थ्य पेशेवर से सलाह लें।' },
   'No values or reference ranges were provided in the report.': { TE: 'నివేదికలో విలువలు లేదా సూచన పరిధులు ఇవ్వలేదు.', HI: 'रिपोर्ट में मान या संदर्भ सीमाएं नहीं दी गई हैं।' },
   'Dashboard': { TE: 'డాష్‌బోర్డ్', HI: 'डैशबोर्ड' },
-  'My Health': { TE: 'నా ఆరోగ్యం', HI: 'मेरा स्वास्थ्य' },
   'Access Requests': { TE: 'యాక్సెస్ అభ్యర్థనలు', HI: 'एक्सेस अनुरोध' },
   'Find Patient': { TE: 'రోగిని కనుగొనండి', HI: 'मरीज खोजें' },
   'Consultations': { TE: 'సంప్రదింపులు', HI: 'परामर्श' },
   'Emergency': { TE: 'అత్యవసరం', HI: 'आपातकाल' },
-  'More': { TE: 'మరిన్ని', HI: 'और विकल्प' },
-  'Other portals': { TE: 'ఇతర పోర్టల్స్', HI: 'अन्य पोर्टल' },
-  'Sign in': { TE: 'సైన్ ఇన్', HI: 'साइन इन' },
   'Sign out': { TE: 'సైన్ అవుట్', HI: 'साइन आउट' },
   'A record overview to help you review your information. Empty sections do not imply that a record is needed.': { TE: 'మీ సమాచారాన్ని సమీక్షించడానికి ఇది సహాయపడుతుంది. ఖాళీ విభాగం అంటే రికార్డు అవసరమని కాదు.', HI: 'अपनी जानकारी देखें। खाली जगह का मतलब यह नहीं कि आपको रिकॉर्ड चाहिए।' },
   'Metadata reminders only; records are not changed.': { TE: 'ఇవి రికార్డు వివరాల గుర్తింపులు మాత్రమే. రికార్డులు మార్చబడలేదు.', HI: 'ये रिकॉर्ड के विवरण की याद दिलाते हैं। रिकॉर्ड बदले नहीं गए हैं।' },
   'A small encrypted copy of allergies, current medicines, important conditions, emergency contact, and update time.': { TE: 'అలర్జీలు, ప్రస్తుతం వాడే మందులు, ముఖ్యమైన ఆరోగ్య సమస్యలు, అత్యవసర సంప్రదింపు, చివరి మార్పు తేదీ మాత్రమే గుప్తీకరించి సేవ్ అవుతాయి.', HI: 'एलर्जी, अभी की दवाएं, जरूरी स्वास्थ्य समस्याएं, आपातकालीन संपर्क और बदलाव की तारीख की छोटी सुरक्षित कॉपी।' },
-  'Device passphrase (10 characters minimum)': { TE: 'పరికర పాస్‌ఫ్రేజ్ (కనీసం 10 అక్షరాలు)', HI: 'डिवाइस पासफ़्रेज़ (कम से कम 10 अक्षर)' },
-  'Save offline summary': { TE: 'ఆఫ్‌లైన్ సారాంశం సేవ్ చేయండి', HI: 'ऑफलाइन सारांश सहेजें' },
-  'Unlock saved summary': { TE: 'సేవ్ చేసిన సారాంశం తెరవండి', HI: 'सहेजा सारांश खोलें' },
-  'Clear saved information': { TE: 'సేవ్ చేసిన సమాచారాన్ని తొలగించండి', HI: 'सहेजी जानकारी हटाएं' },
-  'A record overview to help you review your information. Empty sections do not imply that a record is needed.': { TE: 'మీ సమాచారాన్ని చూడటానికి ఈ సారాంశం సహాయపడుతుంది. ఖాళీ విభాగం అంటే మీకు ఆ రికార్డు అవసరమని కాదు.', HI: 'यह जानकारी देखने में मदद करता है। खाली जगह का मतलब यह नहीं कि आपको वह रिकॉर्ड चाहिए।' },
-  'Metadata reminders only; records are not changed.': { TE: 'రికార్డు వివరాల గుర్తింపులు మాత్రమే. రికార్డులు మార్చబడలేదు.', HI: 'ये रिकॉर्ड के विवरण की याद दिलाते हैं। रिकॉर्ड बदले नहीं गए हैं।' },
-  'A small encrypted copy of allergies, current medicines, important conditions, emergency contact, and update time.': { TE: 'అలర్జీలు, ప్రస్తుతం వాడే మందులు, ముఖ్యమైన సమస్యలు, అత్యవసర సంప్రదింపు, చివరి మార్పు తేదీ మాత్రమే గుప్తీకరించి సేవ్ అవుతాయి.', HI: 'एलर्जी, अभी की दवाएं, जरूरी समस्याएं, आपातकालीन संपर्क और बदलाव की तारीख की छोटी सुरक्षित कॉपी।' },
   'Device passphrase (10 characters minimum)': { TE: 'పరికర పాస్‌ఫ్రేజ్ (కనీసం 10 అక్షరాలు)', HI: 'डिवाइस पासफ़्रेज़ (कम से कम 10 अक्षर)' },
   'Save offline summary': { TE: 'ఆఫ్‌లైన్ సారాంశం సేవ్ చేయండి', HI: 'ऑफलाइन सारांश सहेजें' },
   'Unlock saved summary': { TE: 'సేవ్ చేసిన సారాంశం తెరవండి', HI: 'सहेजा सारांश खोलें' },
@@ -1129,14 +1161,12 @@ const UI_PHRASES: Record<string, Partial<Record<'TE' | 'HI', string>>> = {
   'Doctor': { TE: 'డాక్టర్', HI: 'डॉक्टर' }, 'Complaint': { TE: 'సమస్య', HI: 'समस्या' },
   'Vitals & Immunization Status': { TE: 'ఆరోగ్య కొలతలు, టీకాల స్థితి', HI: 'स्वास्थ्य माप और टीकाकरण स्थिति' },
   'Blood Pressure': { TE: 'రక్తపోటు', HI: 'रक्तचाप' }, 'Fasting Sugar': { TE: 'ఉపవాస రక్త చక్కెర', HI: 'खाली पेट की शुगर' }, 'Weight': { TE: 'బరువు', HI: 'वज़न' },
-  'Relevant past surgeries': { TE: 'గత శస్త్రచికిత్సలు', HI: 'पहले की सर्जरी' }, 'Blood group (optional)': { TE: 'రక్త వర్గం (ఐచ్ఛికం)', HI: 'रक्त समूह (ज़रूरी नहीं)' },
+  'Relevant past surgeries': { TE: 'గత శస్త్రచికిత్సలు', HI: 'पहले की सर्जरी' }, 'Blood group (optional)': { TE: 'రక్త వర్గం (ఐచ్ఛికం)', HI: 'రక్త समूह (ज़रूरी नहीं)' },
   'Emergency contact name': { TE: 'అత్యవసర సంప్రదింపు పేరు', HI: 'आपातकालीन संपर्क का नाम' }, 'Emergency contact relation': { TE: 'సంబంధం', HI: 'रिश्ता' }, 'Emergency contact phone': { TE: 'ఫోన్ నంబర్', HI: 'फोन नंबर' },
   'Prescription Documents': { TE: 'మందుల పత్రాలు', HI: 'दवा के पर्चे' }, 'Upload prescription': { TE: 'మందుల పత్రం అప్‌లోడ్ చేయండి', HI: 'पर्चा अपलोड करें' },
   'Download Personal Health Report': { TE: 'వ్యక్తిగత ఆరోగ్య నివేదిక డౌన్‌లోడ్', HI: 'व्यक्तिगत स्वास्थ्य रिपोर्ट डाउनलोड' },
   'Preview selection': { TE: 'ఎంపికను చూడండి', HI: 'चयन देखें' }, 'Download PDF': { TE: 'PDF డౌన్‌లోడ్', HI: 'PDF डाउनलोड' },
   'Medical Record Completeness': { TE: 'వైద్య రికార్డుల పూర్తి స్థితి', HI: 'मेडिकल रिकॉर्ड की जानकारी' }, 'Records to review': { TE: 'చూడాల్సిన రికార్డులు', HI: 'जांचने वाले रिकॉर्ड' },
-  'Medical Record Completeness': { TE: 'వైద్య రికార్డుల పూర్తి స్థితి', HI: 'मेडिकल रिकॉर्ड की जानकारी' },
-  'Records to review': { TE: 'చూడాల్సిన రికార్డులు', HI: 'जांचने वाले रिकॉर्ड' },
   'Verified ID': { TE: 'ధృవీకరించిన ఐడి', HI: 'सत्यापित आईडी' }, 'Guardian': { TE: 'సంరక్షకుడు', HI: 'अभिभावक' },
   'Copied ID ✓': { TE: 'ఐడి కాపీ అయింది ✓', HI: 'आईडी कॉपी हुई ✓' }, 'Copy ID': { TE: 'ఐడి కాపీ చేయండి', HI: 'आईडी कॉपी करें' },
   'Show My QR': { TE: 'నా QR చూపండి', HI: 'मेरा QR दिखाएं' }, 'Record opened in': { TE: 'రికార్డు తెరవడానికి పట్టిన సమయం', HI: 'रिकॉर्ड खुलने में समय' },
@@ -1231,22 +1261,10 @@ const UI_PHRASES: Record<string, Partial<Record<'TE' | 'HI', string>>> = {
   'Review record': { TE: 'రికార్డు చూడండి', HI: 'रिकॉर्ड देखें' },
   'Offline Medical Summary': { TE: 'ఆఫ్‌లైన్ ఆరోగ్య సారాంశం', HI: 'ऑफलाइन स्वास्थ्य सारांश' },
   'Patient Health Profile': { TE: 'రోగి ఆరోగ్య ప్రొఫైల్', HI: 'मरीज का स्वास्थ्य प्रोफ़ाइल' },
-  'Prescription Documents': { TE: 'మందుల పత్రాలు', HI: 'दवा के पर्चे' },
-  'Download Personal Health Report': { TE: 'వ్యక్తిగత ఆరోగ్య నివేదిక డౌన్‌లోడ్', HI: 'व्यक्तिगत स्वास्थ्य रिपोर्ट डाउनलोड' },
-  'Vitals & Immunization Status': { TE: 'ఆరోగ్య కొలతలు, టీకాల స్థితి', HI: 'स्वास्थ्य माप और टीकाकरण स्थिति' },
-  'Blood Pressure': { TE: 'రక్తపోటు', HI: 'रक्तचाप' },
-  'Fasting Sugar': { TE: 'ఉపవాస రక్త చక్కెర', HI: 'खाली पेट की शुगर' },
-  'Weight': { TE: 'బరువు', HI: 'वज़न' },
   'Save profile': { TE: 'ప్రొఫైల్ సేవ్ చేయండి', HI: 'प्रोफ़ाइल सहेजें' },
   'Cancel': { TE: 'రద్దు', HI: 'रद्द करें' },
   'Current medications': { TE: 'ప్రస్తుతం వాడే మందులు', HI: 'अभी की दवाएं' },
   'Existing health conditions': { TE: 'ఉన్న ఆరోగ్య సమస్యలు', HI: 'मौजूदा स्वास्थ्य समस्याएं' },
-  'Relevant past surgeries': { TE: 'గత శస్త్రచికిత్సలు', HI: 'पहले की सर्जरी' },
-  'Blood group (optional)': { TE: 'రక్త వర్గం (ఐచ్ఛికం)', HI: 'रक्त समूह (ज़रूरी नहीं)' },
-  'Emergency contact name': { TE: 'అత్యవసర సంప్రదింపు పేరు', HI: 'आपातकालीन संपर्क का नाम' },
-  'Emergency contact relation': { TE: 'సంబంధం', HI: 'रिश्ता' },
-  'Emergency contact phone': { TE: 'ఫోన్ నంబర్', HI: 'फोन नंबर' },
-  'Upload prescription': { TE: 'మందుల పత్రం అప్‌లోడ్ చేయండి', HI: 'पर्चा अपलोड करें' },
   'Search prescriptions': { TE: 'మందుల పత్రాలను వెతకండి', HI: 'पर्चे खोजें' },
   'Search medical records': { TE: 'వైద్య రికార్డులను వెతకండి', HI: 'मेडिकल रिकॉर्ड खोजें' },
   'Prescription date': { TE: 'పత్రం తేదీ', HI: 'पर्चे की तारीख' },
@@ -1260,8 +1278,6 @@ const UI_PHRASES: Record<string, Partial<Record<'TE' | 'HI', string>>> = {
   'Open original prescription': { TE: 'అసలు పత్రం తెరవండి', HI: 'मूल पर्चा खोलें' },
   'Correct details': { TE: 'వివరాలు సరిచేయండి', HI: 'विवरण सुधारें' },
   'Save details': { TE: 'వివరాలు సేవ్ చేయండి', HI: 'विवरण सहेजें' },
-  'Download PDF': { TE: 'PDF డౌన్‌లోడ్', HI: 'PDF डाउनलोड' },
-  'Preview selection': { TE: 'ఎంపికను చూడండి', HI: 'चयन देखें' },
   'Preview': { TE: 'ముందస్తు వీక్షణ', HI: 'पूर्वावलोकन' },
   'Date': { TE: 'తేదీ', HI: 'तारीख' }, 'Provider': { TE: 'డాక్టర్ / కేంద్రం', HI: 'डॉक्टर / केंद्र' },
   'Source': { TE: 'మూలం', HI: 'स्रोत' }, 'Verification': { TE: 'ధృవీకరణ', HI: 'सत्यापन' },
@@ -1294,14 +1310,12 @@ const UI_PHRASES: Record<string, Partial<Record<'TE' | 'HI', string>>> = {
   'Find a patient': { TE: 'రోగిని కనుగొనండి', HI: 'मरीज खोजें' },
   'Scan Patient QR': { TE: 'రోగి QR స్కాన్ చేయండి', HI: 'मरीज का QR स्कैन करें' },
   'Clinical Data Locked': { TE: 'వైద్య సమాచారం లాక్ చేయబడింది', HI: 'चिकित्सा जानकारी लॉक है' },
-  'Purpose': { TE: 'ఉద్దేశ్యం', HI: 'उद्देश्य' },
   'Duration': { TE: 'వ్యవధి', HI: 'अवधि' },
   'Patient Health Profile · Consent-shared details': { TE: 'రోగి ఆరోగ్య ప్రొఫైల్ · సమ్మతితో పంచుకున్న వివరాలు', HI: 'मरीज स्वास्थ्य प्रोफ़ाइल · सहमति से साझा विवरण' },
   'Categories marked approved were shared by the patient for this session.': { TE: 'ఆమోదించిన విభాగాలను ఈ సెషన్ కోసం రోగి పంచుకున్నారు.', HI: 'मरीज ने इस सत्र के लिए मंज़ूर श्रेणियां साझा की हैं।' },
   'Show all approved': { TE: 'ఆమోదించినవన్నీ చూపండి', HI: 'सभी मंज़ूर दिखाएं' },
   'Reset demo data': { TE: 'డెమో డేటాను రీసెట్ చేయండి', HI: 'डेमो डेटा रीसेट करें' },
   'Jan Aushadhi Pharmacy': { TE: 'జన్ ఔషధి ఫార్మసీ', HI: 'जन औषधि फ़ार्मेसी' },
-  'Diagnostic Lab': { TE: 'డయాగ్నస్టిక్ ల్యాబ్', HI: 'जांच प्रयोगशाला' },
   'Registry Admin': { TE: 'రిజిస్ట్రీ నిర్వాహకుడు', HI: 'रजिस्ट्री व्यवस्थापक' },
   'HealthPass home': { TE: 'హెల్త్‌పాస్ హోమ్', HI: 'हेल्थपास होम' },
   'PATIENT': { TE: 'రోగి', HI: 'मरीज' },
@@ -1366,11 +1380,16 @@ const UI_PHRASES: Record<string, Partial<Record<'TE' | 'HI', string>>> = {
 };
 
 export function translateUiPhrase(phrase: string, lang: SupportedLang = 'EN'): string {
-  if (lang === 'EN') return phrase;
-  const phraseTranslation = UI_PHRASES[phrase]?.[lang as 'TE' | 'HI'];
-  if (phraseTranslation) return phraseTranslation;
-  const englishKey = Object.keys(TRANSLATIONS.EN).find((key) => TRANSLATIONS.EN[key] === phrase);
-  return englishKey ? tr(englishKey, lang) : phrase;
+  if (!phrase || lang === 'EN') return phrase;
+  const direct = UI_PHRASES[phrase]?.[lang];
+  if (direct) return direct;
+  // Case-insensitive match in UI_PHRASES
+  const uiKey = Object.keys(UI_PHRASES).find((k) => k.trim().toLowerCase() === phrase.trim().toLowerCase());
+  if (uiKey && UI_PHRASES[uiKey]?.[lang]) return UI_PHRASES[uiKey]![lang]!;
+  // Check in TRANSLATIONS.EN
+  const englishKey = Object.keys(TRANSLATIONS.EN).find((key) => TRANSLATIONS.EN[key]?.trim().toLowerCase() === phrase.trim().toLowerCase());
+  if (englishKey) return tr(englishKey, lang);
+  return phrase;
 }
 
 const MEDICAL_CATEGORY_KEYS: Record<string, string> = {
@@ -1410,38 +1429,79 @@ export function translateDataSource(source: string, lang: SupportedLang = 'EN'):
   }
 }
 
+const EMERGENCY_STATUS_MAP: Record<string, Record<SupportedLang, string>> = {
+  IDENTITY_UNKNOWN: {
+    EN: 'Identity Unknown', TE: 'గుర్తింపు తెలియదు', HI: 'अज्ञात पहचान',
+    TA: 'அடையாளம் தெரியவில்லை', KN: 'ಗುರುತು ತಿಳಿದಿಲ್ಲ', MR: 'ओळख अज्ञात',
+    BN: 'পরিচয় অজানা', UR: 'شناخت نامعلوم',
+  },
+  VERIFICATION_PENDING: {
+    EN: 'Verification Pending', TE: 'ధృవీకరణ పెండింగ్‌లో ఉంది', HI: 'सत्यापन लंबित',
+    TA: 'சரிபார்ப்பு நிலுவையில் உள்ளது', KN: 'ಪರಿಶೀಲನೆ ಬಾಕಿ ಇದೆ', MR: 'पड पडताळणी प्रलंबित',
+    BN: 'যাচাই মুলতুবি', UR: 'تصدیق زیر التوا',
+  },
+  AWAITING_CONSENT: {
+    EN: 'Awaiting Consent', TE: 'సమ్మతి కోసం నిరీక్షణ', HI: 'सहमति प्रतीक्षित',
+    TA: 'அனுமதிக்காக காத்திருக்கிறது', KN: 'ಒಪ್ಪಿಗೆಗಾಗಿ ಕಾಯಲಾಗುತ್ತಿದೆ', MR: 'संमतीची प्रतीक्षा आहे',
+    BN: 'সম্মতির অপেক্ষায়', UR: 'رضامندی کا انتظار',
+  },
+  READY_FOR_LINKING: {
+    EN: 'Ready for Linking', TE: 'లింకింగ్‌కు సిద్ధం', HI: 'लिंक के लिए तैयार',
+    TA: 'இணைக்கத் தயார்', KN: 'ಲಿಂಕ್ ಮಾಡಲು ಸಿದ್ಧ', MR: 'लिंक करण्यासाठी तयार',
+    BN: 'লিঙ্ক করার জন্য প্রস্তুত', UR: 'ربط کے لیے تیار',
+  },
+  LINKED: {
+    EN: 'Linked to HealthPass', TE: 'సురక్షితంగా లింక్ చేయబడింది', HI: 'सफलतापूर्वक लिंक',
+    TA: 'இணைக்கப்பட்டது', KN: 'ಸುರಕ್ಷಿತವಾಗಿ ಲಿಂಕ್ ಮಾಡಲಾಗಿದೆ', MR: 'सुरक्षितपणे जोडले',
+    BN: 'সফলভাবে লিঙ্ক করা হয়েছে', UR: 'کامیابی سے منسلک',
+  },
+  LINKING_REJECTED: {
+    EN: 'Linking Rejected', TE: 'లింకింగ్ తిరస్కరించబడింది', HI: 'लिंक अस्वीकृत',
+    TA: 'இணைப்பு நிராகரிக்கப்பட்டது', KN: 'ಲಿಂಕ್ ತಿರಸ್ಕರಿಸಲಾಗಿದೆ', MR: 'लिंक नाकारले',
+    BN: 'লিঙ্ক প্রত্যাখ্যাত', UR: 'ربط مسترد کر دیا گیا',
+  },
+  CLOSED: {
+    EN: 'Closed', TE: 'ముగిసినది', HI: 'बंद',
+    TA: 'மூடப்பட்டது', KN: 'ಮುಕ್ತಾಯಗೊಂಡಿದೆ', MR: 'बंद',
+    BN: 'বন্ধ', UR: 'بند',
+  },
+};
+
 export function translateEmergencyStatus(status: string, lang: SupportedLang = 'EN'): string {
-  const pLang = normalizePrimaryLang(lang);
-  switch (status) {
-    case 'IDENTITY_UNKNOWN':
-      return pLang === 'TE' ? 'గుర్తింపు తెలియదు' : pLang === 'HI' ? 'अज्ञात पहचान' : 'Identity Unknown';
-    case 'VERIFICATION_PENDING':
-      return pLang === 'TE' ? 'ధృవీకరణ పెండింగ్‌లో ఉంది' : pLang === 'HI' ? 'सत्यापन लंबित' : 'Verification Pending';
-    case 'AWAITING_CONSENT':
-      return pLang === 'TE' ? 'సమ్మతి కోసం నిరీక్షణ' : pLang === 'HI' ? 'सहमति प्रतीक्षित' : 'Awaiting Consent';
-    case 'READY_FOR_LINKING':
-      return pLang === 'TE' ? 'లింకింగ్‌కు సిద్ధం' : pLang === 'HI' ? 'लिंक के लिए तैयार' : 'Ready for Linking';
-    case 'LINKED':
-      return pLang === 'TE' ? 'సురక్షితంగా లింక్ చేయబడింది' : pLang === 'HI' ? 'सफलतापूर्वक लिंक' : 'Linked to HealthPass';
-    case 'LINKING_REJECTED':
-      return pLang === 'TE' ? 'లింకింగ్ తిరస్కరించబడింది' : pLang === 'HI' ? 'लिंक अस्वीकृत' : 'Linking Rejected';
-    case 'CLOSED':
-    default:
-      return pLang === 'TE' ? 'ముగిసినది' : pLang === 'HI' ? 'बंद' : 'Closed';
+  const norm = EMERGENCY_STATUS_MAP[status];
+  if (norm) {
+    return norm[lang] || norm.EN || status;
   }
+  return status;
 }
 
+const VERIFICATION_TAG_MAP: Record<string, Record<SupportedLang, string>> = {
+  VERIFIED: {
+    EN: '✓ Verified', TE: '✓ వైద్య ధృవీకృతం', HI: '✓ सत्यापित',
+    TA: '✓ சரிபார்க்கப்பட்டது', KN: '✓ ಪರಿಶೀಲಿಸಲಾಗಿದೆ', MR: '✓ पडताळलेले',
+    BN: '✓ যাচাইকৃত', UR: '✓ تصدیق شدہ',
+  },
+  PATIENT_REPORTED: {
+    EN: 'Patient-Reported', TE: 'రోగి తెలిపినది', HI: 'मरीज द्वारा कथित',
+    TA: 'நோயாளி கூறியது', KN: 'ರೋಗಿ ತಿಳಿಸಿದ್ದು', MR: 'रुग्णाने नोंदवलेले',
+    BN: 'রোগীর দ্বারা বর্ণিত', UR: 'مریض کا بیان کردہ',
+  },
+  DOCUMENT_EXTRACTED: {
+    EN: 'Document-Extracted', TE: 'పత్రం నుండి సంగ్రహించినది', HI: 'दस्तावेज़ से प्राप्त',
+    TA: 'ஆவணத்திலிருந்து பெறப்பட்டது', KN: 'ದಾಖಲೆಯಿಂದ ಪಡೆದದ್ದು', MR: 'दस्तऐवजातून काढलेले',
+    BN: 'নথি থেকে সংগৃহীত', UR: 'دستاویز سے حاصل کردہ',
+  },
+  UNKNOWN_UNVERIFIED: {
+    EN: 'Unverified', TE: 'ధృవీకరించబడలేదు', HI: 'असत्यापित',
+    TA: 'சரிபார்க்கப்படாதது', KN: 'ಪರಿಶೀಲಿಸಲಾಗಿಲ್ಲ', MR: 'अपडताळलेले',
+    BN: 'যাচাই করা হয়নি', UR: 'غیر تصدیق شدہ',
+  },
+};
+
 export function translateVerificationTag(tag: string, lang: SupportedLang = 'EN'): string {
-  const pLang = normalizePrimaryLang(lang);
-  switch (tag) {
-    case 'VERIFIED':
-      return pLang === 'TE' ? '✓ వైద్య ధృవీకృతం' : pLang === 'HI' ? '✓ सत्यापित' : '✓ Verified';
-    case 'PATIENT_REPORTED':
-      return pLang === 'TE' ? 'రోగి తెలిపినది' : pLang === 'HI' ? 'मरीज द्वारा कथित' : 'Patient-Reported';
-    case 'DOCUMENT_EXTRACTED':
-      return pLang === 'TE' ? 'పత్రం నుండి సంగ్రహించినది' : pLang === 'HI' ? 'दस्तावेज़ से प्राप्त' : 'Document-Extracted';
-    case 'UNKNOWN_UNVERIFIED':
-    default:
-      return pLang === 'TE' ? 'ధృవీకరించబడలేదు' : pLang === 'HI' ? 'असत्यापित' : 'Unverified';
+  const norm = VERIFICATION_TAG_MAP[tag];
+  if (norm) {
+    return norm[lang] || norm.EN || tag;
   }
+  return tag;
 }

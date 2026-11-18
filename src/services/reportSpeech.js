@@ -21,6 +21,9 @@ export function findReportSpeechVoice(voices, language) {
   return findSpeechVoiceForLocale(voices, locale);
 }
 
+/**
+ * @param {{ synthesis: any, createUtterance: (text: string) => any, onState?: (state: string) => void }} options
+ */
 export function createReportSpeechController({ synthesis, createUtterance, onState = () => {} }) {
   let current = null;
   let sequence = 0;

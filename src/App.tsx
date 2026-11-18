@@ -4,6 +4,7 @@ import {
   AlertOctagon,
   AlertTriangle,
   ArrowRight,
+  Bell,
   Brain,
   Camera,
   CheckCircle2,
@@ -21,9 +22,11 @@ import {
   Hospital,
   Info,
   KeyRound,
+  LayoutDashboard,
   Lock,
   LogIn,
   LogOut,
+  Menu,
   MoreHorizontal,
   MessageSquare,
   Pill,
@@ -40,6 +43,7 @@ import {
   Syringe,
   Unlock,
   Upload,
+  User,
   UserCheck,
   Users,
   Wind,
@@ -81,6 +85,19 @@ import {
   EmergencyRecordsWorkspace,
   PatientEmergencyLinksPanel,
 } from './components/EmergencyRecordsWorkspace.tsx';
+import { ThreeCanvasHero } from './components/ThreeCanvasHero.tsx';
+import { ThreeHealthSphere } from './components/ThreeHealthSphere.tsx';
+import { ThreeBackgroundScene } from './components/ThreeBackgroundScene.tsx';
+import { RoleSelect3DShowcase } from './components/RoleSelect3DShowcase.tsx';
+import { ThreeRoleCanvas } from './components/ThreeRoleCanvas.tsx';
+import { ThreeHealthCard3D } from './components/ThreeHealthCard3D.tsx';
+import { HospitalVitalsTicker } from './components/HospitalVitalsTicker.tsx';
+import { HospitalHeroSection } from './components/HospitalHeroSection.tsx';
+import { HospitalDepartmentsShowcase } from './components/HospitalDepartmentsShowcase.tsx';
+import { CaregiverWorkspace } from './components/CaregiverWorkspace.tsx';
+import { MedicalCheckupAnalyser } from './components/MedicalCheckupAnalyser.tsx';
+import { SmartReminderWorkspace } from './components/SmartReminderWorkspace.tsx';
+import { ContinuousHealthTimeline } from './components/ContinuousHealthTimeline.tsx';
 import {
   apiRequest,
   setHealthPassBackend,
@@ -90,6 +107,13 @@ import {
 } from './api.ts';
 import { isSupabaseConfigured } from './services/supabaseClient.ts';
 import { restoreSupabaseUser, signInSupabase, signOutSupabase, signUpSupabasePatient } from './services/supabaseAuth.ts';
+import {
+  getPersistedAuthSession,
+  setPersistedAuthSession,
+  clearPersistedAuthSession,
+  saveRegisteredUser,
+  findRegisteredUser,
+} from './services/authStorage.ts';
 import {
   getMedicalRecordCategory,
   isMedicalCategoryAuthorized,
@@ -113,6 +137,7 @@ type WorkspaceMode =
   | 'HOW_IT_WORKS'
   | 'PATIENT'
   | 'DOCTOR'
+  | 'CAREGIVER'
   | 'EMERGENCY'
   | 'SPLIT_DEMO'
   | 'PHARMACY'
@@ -144,7 +169,7 @@ export const DOCTOR_DIRECTORY = [
   {
     id: 'doc-village',
     name: 'Dr. Anil Kumar',
-    email: 'village.doctor@demo.com',
+    email: 'anil.kumar@healthpass.in',
     facilityName: 'Village Health Centre, Kothapalli',
     facilityLevel: 'VILLAGE' as FacilityLevel,
     facilityType: 'Village Health Centre' as FacilityType,
@@ -153,7 +178,7 @@ export const DOCTOR_DIRECTORY = [
   {
     id: 'doc-mandal',
     name: 'Dr. Rahul Sharma',
-    email: 'doctor@demo.com',
+    email: 'rahul.sharma@healthpass.in',
     facilityName: 'Mandal Health Centre, Nandigama',
     facilityLevel: 'MANDAL' as FacilityLevel,
     facilityType: 'Mandal Health Centre' as FacilityType,
@@ -162,7 +187,7 @@ export const DOCTOR_DIRECTORY = [
   {
     id: 'doc-district',
     name: 'Dr. Meera Reddy',
-    email: 'district.doctor@demo.com',
+    email: 'meera.reddy@healthpass.in',
     facilityName: 'District Hospital, Vijayawada',
     facilityLevel: 'DISTRICT' as FacilityLevel,
     facilityType: 'District Hospital' as FacilityType,
@@ -173,36 +198,44 @@ export const DOCTOR_DIRECTORY = [
 export const DEMO_PATIENTS = [
   {
     id: 'pat-1',
-    name: 'Demo Patient (Ananya Rao)',
-    email: 'patient@demo.com',
-    healthPassId: 'HP-DEMO-0417',
+    name: 'Ananya Rao',
+    email: 'ananya.rao@healthpass.in',
+    healthPassId: 'HP-PAT-0417',
     abhaNumber: '91-4820-7391-0417',
     summary: '42 yrs · Sulfa Allergy · 3-Level History',
   },
   {
     id: 'pat-2',
     name: 'Aarav Kumar (Child Profile)',
-    email: 'child@demo.com',
+    email: 'aarav.kumar@healthpass.in',
     healthPassId: 'HP-CHILD-0892',
     abhaNumber: '91-6192-8410-0892',
-    summary: '7 yrs · Guardian Managed Demo Profile',
+    summary: '7 yrs · Guardian Managed Profile',
   },
   {
     id: 'pat-3',
     name: 'Lakshmi Narayana (Elderly Care)',
-    email: 'elder@demo.com',
+    email: 'lakshmi.narayana@healthpass.in',
     healthPassId: 'HP-ELDER-0931',
     abhaNumber: '91-7731-9024-0931',
-    summary: '68 yrs · Demo Profile',
+    summary: '68 yrs · Elderly Care Profile',
   },
 ];
 
 export default function App() {
-  const [mode, setMode] = useState<WorkspaceMode>('LANDING');
+  const initialSession = getPersistedAuthSession();
+  const [mode, setMode] = useState<WorkspaceMode>(() => (initialSession?.mode as WorkspaceMode) || 'LANDING');
   const [isCreatingAccount, setIsCreatingAccount] = useState(false);
   const [registrationName, setRegistrationName] = useState('');
-  const [demoStorageWarning, setDemoStorageWarning] = useState('');
-  const [providerNavGroup, setProviderNavGroup] = useState<ProviderNavGroup>('WORKSPACE');
+  const [registrationRole, setRegistrationRole] = useState<'patient' | 'doctor' | 'caregiver' | 'pharmacy' | 'lab'>('patient');
+  const [registrationFacilityName, setRegistrationFacilityName] = useState('');
+  const [registrationFacilityLevel, setRegistrationFacilityLevel] = useState<FacilityLevel>('VILLAGE');
+  const [registrationLicenseNumber, setRegistrationLicenseNumber] = useState('');
+  const [registrationBloodGroup, setRegistrationBloodGroup] = useState('O+');
+  const [registrationAge, setRegistrationAge] = useState('32');
+  const [registrationDateOfBirth, setRegistrationDateOfBirth] = useState('');
+  const [registrationGender, setRegistrationGender] = useState('Female');
+  const [providerNavGroup, setProviderNavGroup] = useState<ProviderNavGroup>(() => (initialSession?.providerNavGroup as ProviderNavGroup) || 'WORKSPACE');
   const [lang, setLang] = useState<SupportedLang>(() => {
     try {
       const saved = localStorage.getItem('healthpass_lang');
@@ -226,33 +259,62 @@ export default function App() {
 
   useEffect(() => {
     let cancelled = false;
-    void apiRequest('/api/demo/status').then((result) => {
+    void apiRequest('/api/auth/me', { suppressGlobal403: true }).then((result) => {
       if (cancelled) return;
-      const status = result.data?.storageStatus;
-      if (!result.data?.persistent) {
-        setDemoStorageWarning(status === 'corrupt' || status === 'invalid'
-          ? 'Saved demo data could not be read. The app is using built-in examples; use Reset demo data after signing in to start a fresh saved demo.'
-          : 'Browser storage is unavailable. Demo changes may not survive a refresh.');
+      if (result.ok && result.data?.user) {
+        const user = result.data.user;
+        setHealthPassBackend(user.backend || 'api');
+        setLoggedInUser(user);
+        const session = getPersistedAuthSession();
+        if (session?.mode && session.mode !== 'LANDING') {
+          setMode(session.mode as any);
+        } else {
+          if (user.role === 'patient') { setActivePatientId(user.id); setMode('PATIENT'); }
+          else if (user.role === 'doctor') { setActiveDoctorId(user.id); setMode('DOCTOR'); }
+          else if (user.role === 'pharmacy') setMode('PHARMACY');
+          else if (user.role === 'lab') setMode('LAB');
+          else if (user.role === 'admin') setMode('ADMIN');
+        }
+        return;
+      }
+
+      if (isSupabaseConfigured) {
+        void restoreSupabaseUser().then((user) => {
+          if (cancelled || !user) return;
+          setHealthPassBackend('supabase');
+          setLoggedInUser(user);
+          if (user.role === 'patient') { setActivePatientId(user.id); setMode('PATIENT'); }
+          else if (user.role === 'doctor') { setActiveDoctorId(user.id); setMode('DOCTOR'); }
+          else if (user.role === 'pharmacy') setMode('PHARMACY');
+          else if (user.role === 'lab') setMode('LAB');
+        }).catch(() => { });
+      } else {
+        const session = getPersistedAuthSession();
+        if (session?.user) {
+          setLoggedInUser(session.user as any);
+          if (session.mode) setMode(session.mode as any);
+          if (session.activePatientId) setActivePatientId(session.activePatientId);
+          if (session.activeDoctorId) setActiveDoctorId(session.activeDoctorId);
+        }
+      }
+    }).catch(() => {
+      const session = getPersistedAuthSession();
+      if (session?.user) {
+        setLoggedInUser(session.user as any);
+        if (session.mode) setMode(session.mode as any);
+        if (session.activePatientId) setActivePatientId(session.activePatientId);
+        if (session.activeDoctorId) setActiveDoctorId(session.activeDoctorId);
       }
     });
     return () => { cancelled = true; };
   }, []);
 
   useEffect(() => {
-    if (!isSupabaseConfigured) return;
     let cancelled = false;
-    void restoreSupabaseUser().then((user) => {
-      if (cancelled || !user) return;
-      setHealthPassBackend('supabase');
-      setLoggedInUser(user);
-      setWalletData(null); setDoctorRecord(null); setPharmacyData(null);
-      if (user.role === 'patient') { setActivePatientId(user.id); setMode('PATIENT'); }
-      else if (user.role === 'doctor') { setActiveDoctorId(user.id); setMode('DOCTOR'); }
-      else if (user.role === 'pharmacy') setMode('PHARMACY');
-      else if (user.role === 'lab') setMode('LAB');
-    }).catch((error) => {
-      if (!cancelled) showToast(error?.message || 'Saved HealthPass sign-in could not be restored.');
-    });
+    void apiRequest('/api/provider/directory', { suppressGlobal403: true }).then((result) => {
+      if (cancelled || !result.ok || !result.data?.doctors?.length) return;
+      setDoctorList(result.data.doctors);
+    }).catch(() => { });
     return () => { cancelled = true; };
   }, []);
 
@@ -263,12 +325,14 @@ export default function App() {
   const [showLanguageDropdown, setShowLanguageDropdown] = useState(false);
   const [showUserDropdown, setShowUserDropdown] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [doctorSidebarTab, setDoctorSidebarTab] = useState<'OVERVIEW' | 'PATIENTS' | 'REQUESTS' | 'RECORDS' | 'CONSULT' | 'HISTORY' | 'PROFILE'>('OVERVIEW');
 
   // Active Patient & Doctor selection
-  const [activePatientId, setActivePatientId] = useState<string>('pat-1');
-  const [activeDoctorId, setActiveDoctorId] = useState<string>('doc-village');
+  const [activePatientId, setActivePatientId] = useState<string>(() => initialSession?.activePatientId || (initialSession?.user?.role === 'patient' ? initialSession.user.id : ''));
+  const [activeDoctorId, setActiveDoctorId] = useState<string>(() => initialSession?.activeDoctorId || (initialSession?.user?.role === 'doctor' ? initialSession.user.id : ''));
   const [doctorList, setDoctorList] = useState(DOCTOR_DIRECTORY);
-  const [patientTab, setPatientTab] = useState<PatientTab>('HEALTH');
+  const [patientTab, setPatientTab] = useState<PatientTab>(() => (initialSession?.patientTab as PatientTab) || 'HEALTH');
   useEffect(() => () => reportAiAbortRef.current?.abort(), [mode, patientTab]);
   const [selectedMedicalRecordCategory, setSelectedMedicalRecordCategory] = useState<string | null>(null);
   const [selectedDoctorRecordCategory, setSelectedDoctorRecordCategory] = useState<string | null>(null);
@@ -291,7 +355,7 @@ export default function App() {
   const [externalAiConsent, setExternalAiConsent] = useState<Record<string, boolean>>({});
   const [reportAiExplanations, setReportAiExplanations] = useState<Record<string, any>>({});
   const [copiedExplanationId, setCopiedExplanationId] = useState<string | null>(null);
-  const reportAiAbortRef = useRef<AbortController | null>(null);
+  const reportAiAbortRef = useRef<any>(null);
 
   useEffect(() => {
     try { localStorage.setItem('healthpass_report_explanation_language', reportExplanationLanguage); } catch { /* preference storage is optional */ }
@@ -393,8 +457,8 @@ export default function App() {
 
   // Login Modal State
   const [showLoginModal, setShowLoginModal] = useState(false);
-  const [loginEmail, setLoginEmail] = useState('patient@demo.com');
-  const [loginPassword, setLoginPassword] = useState('Demo@123');
+  const [loginEmail, setLoginEmail] = useState('');
+  const [loginPassword, setLoginPassword] = useState('');
   const [loginError, setLoginError] = useState<string | null>(null);
   const [loggedInUser, setLoggedInUser] = useState<{
     id: string;
@@ -404,8 +468,22 @@ export default function App() {
     facilityName?: string;
     facilityLevel?: string;
     healthPassId?: string;
-    backend?: 'demo' | 'supabase';
-  } | null>(null);
+    backend?: 'demo' | 'supabase' | 'api';
+  } | null>(() => (initialSession?.user as any) || null);
+
+  // Synchronize active authentication session into browser storage so refresh preserves state
+  useEffect(() => {
+    if (loggedInUser) {
+      setPersistedAuthSession({
+        user: loggedInUser as any,
+        mode,
+        activePatientId,
+        activeDoctorId,
+        patientTab,
+        providerNavGroup,
+      });
+    }
+  }, [loggedInUser, mode, activePatientId, activeDoctorId, patientTab, providerNavGroup]);
 
   useEffect(() => {
     setExternalAiConsent({});
@@ -439,23 +517,17 @@ export default function App() {
   const [requestDurationHours, setRequestDurationHours] = useState<number>(24);
 
   // Doctor Point-of-Care State
-  const [doctorLookupQuery, setDoctorLookupQuery] = useState('HP-DEMO-0417');
+  const [doctorLookupQuery, setDoctorLookupQuery] = useState('');
   const [preConsentIdentity, setPreConsentIdentity] = useState<{
     patientId: string;
     name: string;
     healthPassId: string;
     gatewayLabel?: string;
-  } | null>({
-    patientId: 'pat-1',
-    name: 'Demo Patient (Ananya Rao)',
-    healthPassId: 'HP-DEMO-0417',
-    gatewayLabel: 'HealthPass Verified Token Lookup',
-  });
+  } | null>(null);
   const [doctorRecord, setDoctorRecord] = useState<any | null>(null);
   const [doctorConsentError, setDoctorConsentError] = useState<ConsentErrorState | null>(null);
   const [authorizedGrantsForDoctor, setAuthorizedGrantsForDoctor] = useState<any[]>([]);
   const [recordOpenSeconds, setRecordOpenSeconds] = useState<number | null>(0.4);
-  const [simulatedOtpCode, setSimulatedOtpCode] = useState<string>('482910');
   const [otpInput, setOtpInput] = useState('');
   const [showScannerModal, setShowScannerModal] = useState(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
@@ -524,8 +596,8 @@ export default function App() {
 
   // Pharmacy, Lab, Admin Data
   const [pharmacyData, setPharmacyData] = useState<any | null>(null);
-  const [pharmacySearchId, setPharmacySearchId] = useState('HP-DEMO-0417');
-  const [pharmacyLookupQuery, setPharmacyLookupQuery] = useState('HP-DEMO-0417');
+  const [pharmacySearchId, setPharmacySearchId] = useState('');
+  const [pharmacyLookupQuery, setPharmacyLookupQuery] = useState('');
   const [labHealthPassId, setLabHealthPassId] = useState('');
   const [labPatientIdentity, setLabPatientIdentity] = useState<any | null>(null);
   const [labAccessStatus, setLabAccessStatus] = useState('NONE');
@@ -564,12 +636,19 @@ export default function App() {
       try { await clearEncryptedOfflineSummary(patientId); }
       catch { cacheClearFailed = true; }
     }
+    try {
+      await apiRequest('/api/auth/logout', { method: 'POST', suppressGlobal403: true });
+    } catch {
+      // Backend logout is best-effort
+    }
     if (loggedInUser?.backend === 'supabase') {
       try { await signOutSupabase(); }
       catch (error: any) { showToast(error?.message || 'Could not complete secure sign-out.'); return; }
     }
-    setHealthPassBackend('demo');
+    setHealthPassBackend('api');
+    clearPersistedAuthSession();
     setLoggedInUser(null);
+    setMode('LANDING');
     setWalletData(null); setDoctorRecord(null); setAuthorizedGrantsForDoctor([]);
     setPharmacyData(null);
     setShowUserDropdown(false);
@@ -848,6 +927,116 @@ export default function App() {
     };
   }, [showScannerModal]);
 
+  const handleFillSampleRegistration = (role: 'patient' | 'doctor' | 'caregiver' | 'pharmacy' | 'lab') => {
+    setRegistrationRole(role);
+    if (role === 'doctor') {
+      setRegistrationName('Dr. Priya Sharma, MBBS, MD');
+      setLoginEmail('dr.priya@apollohealth.org');
+      setLoginPassword('Doctor@2026');
+      setRegistrationFacilityName('Apex Multispecialty Hospital');
+      setRegistrationFacilityLevel('DISTRICT');
+      setRegistrationLicenseNumber('MCI-2026-9842');
+    } else if (role === 'caregiver') {
+      setRegistrationName('Sunita Rao (Family Caregiver)');
+      setLoginEmail('sunita.caregiver@demo.com');
+      setLoginPassword('Demo@123');
+      setRegistrationAge('38');
+      setRegistrationDateOfBirth('1988-08-15');
+      setRegistrationGender('Female');
+    } else if (role === 'pharmacy') {
+      setRegistrationName('Rajesh Verma, B.Pharm');
+      setLoginEmail('rajesh.pharmacy@janaushadhi.gov');
+      setLoginPassword('Pharma@2026');
+      setRegistrationFacilityName('Pradhan Mantri Jan Aushadhi Kendra #1042');
+      setRegistrationLicenseNumber('20-B/21-B MH-9841');
+    } else if (role === 'lab') {
+      setRegistrationName('Dr. Sunita Patil, MD Path');
+      setLoginEmail('sunita.path@apexdiagnostics.org');
+      setLoginPassword('LabPath@2026');
+      setRegistrationFacilityName('Apex Diagnostics & NABL Pathology Lab');
+      setRegistrationLicenseNumber('NABL-MC-2026-081');
+    } else {
+      setRegistrationName('Ananya Rao');
+      setLoginEmail('ananya.rao@healthpass.org');
+      setLoginPassword('Patient@2026');
+      setRegistrationAge('32');
+      setRegistrationDateOfBirth('1994-05-12');
+      setRegistrationGender('Female');
+      setRegistrationBloodGroup('O+');
+    }
+  };
+
+  const handleQuickDemoLaunch = (role: 'patient' | 'doctor' | 'caregiver' | 'pharmacy' | 'lab') => {
+    // Quick demo uses the local demo data store, never the MongoDB backend.
+    setHealthPassBackend('demo');
+    if (role === 'patient') {
+      const demoUser = {
+        id: 'pat-1',
+        name: 'Ananya Rao',
+        email: 'ananya.rao@healthpass.org',
+        role: 'patient',
+        healthPassId: 'HP-DEMO-0417',
+        backend: 'demo' as const,
+      };
+      setLoggedInUser(demoUser);
+      setActivePatientId('pat-1');
+      setMode('PATIENT');
+      setPatientTab('HEALTH');
+      showToast('Switched to Demo Patient Wallet (Ananya Rao)');
+    } else if (role === 'caregiver') {
+      const demoUser = {
+        id: 'caregiver-demo',
+        name: 'Sunita Rao',
+        email: 'sunita.caregiver@demo.com',
+        role: 'caregiver',
+        backend: 'demo' as const,
+      };
+      setLoggedInUser(demoUser);
+      setMode('CAREGIVER');
+      showToast('Switched to Caregiver & Assisted Care Workspace (Sunita Rao)');
+    } else if (role === 'doctor') {
+      const demoUser = {
+        id: 'doc-village',
+        name: 'Dr. Anil Kumar',
+        email: 'village.doctor@demo.com',
+        role: 'doctor',
+        facilityName: 'Village Health Centre, Kothapalli',
+        facilityLevel: 'VILLAGE',
+        licenseNumber: 'MCI-2026-1049',
+        backend: 'demo' as const,
+      };
+      setLoggedInUser(demoUser);
+      setActiveDoctorId('doc-village');
+      setMode('DOCTOR');
+      setProviderNavGroup('WORKSPACE');
+      showToast('Switched to Demo Doctor Practice Portal (Dr. Anil Kumar)');
+    } else if (role === 'pharmacy') {
+      const demoUser = {
+        id: 'pharmacy-demo',
+        name: 'Jan Aushadhi Pharmacist',
+        email: 'pharmacy@demo.com',
+        role: 'pharmacy',
+        facilityName: 'Jan Aushadhi Medical Store',
+        backend: 'demo' as const,
+      };
+      setLoggedInUser(demoUser);
+      setMode('PHARMACY');
+      showToast('Switched to Jan Aushadhi Pharmacy Portal');
+    } else if (role === 'lab') {
+      const demoUser = {
+        id: 'lab-demo',
+        name: 'Diagnostic Lab Staff',
+        email: 'lab@demo.com',
+        role: 'lab',
+        facilityName: 'Apex Diagnostic Lab',
+        backend: 'demo' as const,
+      };
+      setLoggedInUser(demoUser);
+      setMode('LAB');
+      showToast('Switched to NABL Diagnostic Lab Portal');
+    }
+  };
+
   // ============================================================================
   // USER ACTIONS (LOGIN, CONSENT, REVOKE, SCAN, REQUEST, AI EXPLAIN, FHIR)
   // ============================================================================
@@ -855,49 +1044,156 @@ export default function App() {
     e.preventDefault();
     setLoginError(null);
     if (isCreatingAccount) {
-      if (!isSupabaseConfigured) { setLoginError('Patient account creation requires the configured Supabase connection.'); return; }
       try {
-        if (!registrationName.trim()) throw new Error('Enter your name to create a patient account.');
-        const registered = await signUpSupabasePatient(loginEmail.trim(), loginPassword, registrationName);
-        setIsCreatingAccount(false);
-        if (registered.confirmationRequired) {
-          setLoginError('Check your email to confirm your account, then sign in.');
+        if (!registrationName.trim()) throw new Error('Please enter your full name.');
+        if (!loginEmail.trim()) throw new Error('Please enter your email address.');
+        if (!loginPassword || loginPassword.length < 6) throw new Error('Password must be at least 6 characters.');
+        if (registrationRole === 'patient') {
+          if (!registrationDateOfBirth || Number.isNaN(Date.parse(`${registrationDateOfBirth}T00:00:00`))) {
+            throw new Error('Please enter your date of birth. It is required to verify emergency access.');
+          }
+        }
+
+        const payload: any = {
+          name: registrationName.trim(),
+          email: loginEmail.trim(),
+          password: loginPassword,
+          role: registrationRole,
+        };
+
+        if (registrationRole === 'patient') {
+          payload.bloodGroup = registrationBloodGroup;
+          payload.age = registrationAge;
+          payload.dateOfBirth = registrationDateOfBirth;
+          payload.gender = registrationGender;
+        } else if (registrationRole === 'doctor') {
+          payload.facilityName = registrationFacilityName.trim() || 'HealthPass Clinical Centre';
+          payload.facilityLevel = registrationFacilityLevel;
+          payload.licenseNumber = registrationLicenseNumber.trim() || 'MCI-LIC-VERIFIED';
+        } else if (registrationRole === 'pharmacy') {
+          payload.facilityName = registrationFacilityName.trim() || 'Jan Aushadhi Medical Store';
+          payload.facilityLevel = 'PHARMACY';
+          payload.facilityType = 'Community Pharmacy';
+          payload.licenseNumber = registrationLicenseNumber.trim() || 'PHA-LIC-VERIFIED';
+        } else if (registrationRole === 'lab') {
+          payload.facilityName = registrationFacilityName.trim() || 'Diagnostic Pathology Laboratory';
+          payload.facilityLevel = 'LAB';
+          payload.facilityType = 'Diagnostic Lab';
+          payload.licenseNumber = registrationLicenseNumber.trim() || 'NABL-LAB-VERIFIED';
+        }
+
+        const res = await apiRequest('/api/auth/register', {
+          method: 'POST',
+          body: JSON.stringify(payload),
+          suppressGlobal403: true,
+        });
+
+        if (!res.ok) {
+          throw new Error(
+            res.status === 0
+              ? 'The HealthPass server is unreachable. Check the backend connection and try again.'
+              : res.data?.error || 'Account creation failed.'
+          );
+        }
+        if (!res.data?.user) {
+          throw new Error(res.data?.error || 'Account creation failed.');
+        }
+        const registeredUser: any = res.data.user;
+
+        // Doctors must be verified by a hospital administrator before they can
+        // sign in. Never fabricate a local demo account instead.
+        if (res.data?.verificationRequired) {
+          setLoginError(
+            res.data?.message ||
+              'Account created. A hospital administrator must verify your credentials before access is enabled.'
+          );
+          showToast('Account created. Await hospital administrator verification.');
           return;
         }
-        if (!registered.user) throw new Error('The account was created, but sign-in could not be completed.');
-        setHealthPassBackend('supabase');
-        setLoggedInUser(registered.user); setActivePatientId(registered.user.id); setWalletData(null);
-        setMode('PATIENT'); setShowLoginModal(false);
-        showToast('Patient account created and signed in.');
-      } catch (error: any) { setLoginError(error?.message || 'Account creation failed.'); }
+
+        setHealthPassBackend('api');
+        saveRegisteredUser(registeredUser as any, loginPassword);
+        setIsCreatingAccount(false);
+        setLoggedInUser(registeredUser);
+        setShowLoginModal(false);
+
+        const targetMode = registeredUser.role === 'patient' ? 'PATIENT' : registeredUser.role === 'doctor' ? 'DOCTOR' : registeredUser.role === 'pharmacy' ? 'PHARMACY' : 'LAB';
+        setMode(targetMode as any);
+        setPersistedAuthSession({
+          user: registeredUser,
+          mode: targetMode,
+          activePatientId: registeredUser.role === 'patient' ? registeredUser.id : activePatientId,
+          activeDoctorId: registeredUser.role === 'doctor' ? registeredUser.id : activeDoctorId,
+        });
+
+        if (registeredUser.role === 'patient') {
+          setActivePatientId(registeredUser.id);
+          setWalletData(null);
+          void fetchPatientWallet(registeredUser.id);
+          showToast(`Welcome ${registeredUser.name}! Patient wallet active.`);
+        } else if (registeredUser.role === 'doctor') {
+          setActiveDoctorId(registeredUser.id);
+          setDoctorRecord(null);
+          showToast(`Welcome Dr. ${registeredUser.name}! Doctor portal active.`);
+        } else if (registeredUser.role === 'pharmacy') {
+          setPharmacyData(null);
+          showToast(`Welcome ${registeredUser.name}! Pharmacist portal active.`);
+        } else if (registeredUser.role === 'lab') {
+          showToast(`Welcome ${registeredUser.name}! Diagnostic Lab portal active.`);
+        }
+      } catch (error: any) {
+        setLoginError(error?.message || 'Account creation failed.');
+      }
       return;
     }
-    // The listed fictional identities always use their isolated browser demo store.
+
     const res = await apiRequest('/api/auth/login', {
       method: 'POST',
-      body: JSON.stringify({ email: loginEmail, password: loginPassword }),
+      body: JSON.stringify({ email: loginEmail.trim(), password: loginPassword }),
       suppressGlobal403: true,
     });
     let user: any = res.ok ? res.data?.user : null;
-    if (user) {
-      if (loggedInUser?.backend === 'supabase') {
-        try { await signOutSupabase(); }
-        catch (error: any) { setLoginError(error?.message || 'Could not close the current secure session.'); return; }
+    let backend: 'api' | 'supabase' | 'demo' = (res.ok && res.data?.user?.backend) || 'api';
+    if (!user) {
+      // Only a genuine network failure may fall back to local/demo or Supabase.
+      // A 401 (bad password) or 403 (unverified provider) must surface directly.
+      if (res.status !== 0) {
+        setLoginError(translateUiPhrase(res.data?.error || 'Invalid email or password.', lang));
+        return;
       }
-      setHealthPassBackend('demo');
+      const localMatch = findRegisteredUser(loginEmail.trim(), loginPassword);
+      if (localMatch) {
+        user = localMatch;
+        backend = 'demo';
+      } else if (isSupabaseConfigured) {
+        try {
+          user = await signInSupabase(loginEmail.trim(), loginPassword);
+          backend = 'supabase';
+        } catch {
+          setLoginError(translateUiPhrase(res.data?.error || 'The HealthPass server is unreachable. Please try again.', lang));
+          return;
+        }
+      } else {
+        setLoginError(translateUiPhrase('The HealthPass server is unreachable. Check the backend connection and try again.', lang));
+        return;
+      }
     }
-    else {
-      if (!isSupabaseConfigured) { setLoginError(translateUiPhrase(res.data?.error || 'Login failed. Supabase connection is not configured.', lang)); return; }
-      try { user = await signInSupabase(loginEmail.trim(), loginPassword); setHealthPassBackend('supabase'); }
-      catch (error: any) { setLoginError(translateUiPhrase(error?.message || 'Login failed.', lang)); return; }
-    }
-    const u = { ...user, backend: user.backend || 'demo' };
+    setHealthPassBackend(backend);
+    const u = { ...user, backend };
     // Never carry an unlocked summary or key across account changes.
     offlineKeyRef.current = null;
     setOfflineSummary(null);
     setOfflinePassphrase('');
     setOfflineMessage('');
     setLoggedInUser(u);
+    const targetMode = u.role === 'patient' ? 'PATIENT' : u.role === 'doctor' ? 'DOCTOR' : u.role === 'pharmacy' ? 'PHARMACY' : u.role === 'lab' ? 'LAB' : 'ADMIN';
+    setMode(targetMode as any);
+    setPersistedAuthSession({
+      user: u,
+      mode: targetMode,
+      activePatientId: u.role === 'patient' ? u.id : activePatientId,
+      activeDoctorId: u.role === 'doctor' ? u.id : activeDoctorId,
+    });
     setWalletData(null); setDoctorRecord(null); setAuthorizedGrantsForDoctor([]);
     setPharmacyData(null);
     setLabPatientIdentity(null);
@@ -906,18 +1202,17 @@ export default function App() {
     setShowLoginModal(false);
     if (u.role === 'patient') {
       setActivePatientId(u.id);
-      setMode('PATIENT');
-      showToast(`Signed in as ${u.name} (${u.healthPassId || 'HP-DEMO-0417'})`);
+      void fetchPatientWallet(u.id);
+      showToast(`Signed in as ${u.name} (${u.healthPassId || 'HealthPass ID'})`);
     } else if (u.role === 'doctor') {
       setActiveDoctorId(u.id);
-      setMode('DOCTOR');
       showToast(`Signed in as ${u.name}`);
     } else if (u.role === 'pharmacy') {
-      setMode('PHARMACY');
+      showToast(`Signed in as ${u.name} (Pharmacist)`);
     } else if (u.role === 'lab') {
-      setMode('LAB');
+      showToast(`Signed in as ${u.name} (Diagnostic Lab)`);
     } else if (u.role === 'admin') {
-      setMode('ADMIN');
+      showToast(`Signed in as ${u.name} (Registry Admin)`);
     }
   };
 
@@ -969,9 +1264,6 @@ export default function App() {
       showToast(res.data?.error || 'Cannot request access.');
       return;
     }
-    if (res.data?.simulatedOtp) {
-      setSimulatedOtpCode(res.data.simulatedOtp);
-    }
     setSelectedCategories(
       requestCategories.length > 0
         ? requestCategories
@@ -998,7 +1290,9 @@ export default function App() {
         decision,
         grantedCategories: pendingRequest?.providerType === 'pharmacist'
           ? ['Medications & Prescriptions']
-          : overrideCats || selectedCategories,
+          : pendingRequest?.providerType === 'lab'
+            ? ['Laboratory Reports']
+            : overrideCats || selectedCategories,
         durationHours: overrideHours || selectedDuration,
         durationSeconds: useFastExpirySeconds || undefined,
         actedByHelper: helperMode
@@ -1090,7 +1384,7 @@ export default function App() {
       method: 'POST',
       body: JSON.stringify({
         grantId,
-        otp: otpInput || simulatedOtpCode,
+        otp: otpInput,
         selectedCategories,
       }),
       suppressGlobal403: true,
@@ -1163,7 +1457,7 @@ export default function App() {
 
   const handleLabPatientLookup = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (loggedInUser?.role !== 'lab' || loggedInUser.id !== 'lab-demo') { showToast('Sign in with the diagnostic lab account to identify a patient.'); return; }
+    if (loggedInUser?.role !== 'lab') { showToast('Sign in with the diagnostic lab account to identify a patient.'); return; }
     setLabLookupBusy(true);
     const result = await apiRequest('/api/lab/patient-lookup', {
       method: 'POST', labId: loggedInUser.id,
@@ -1177,7 +1471,7 @@ export default function App() {
   };
 
   const handleLabRequestAccess = async () => {
-    if (loggedInUser?.role !== 'lab' || loggedInUser.id !== 'lab-demo' || !labPatientIdentity) return;
+    if (loggedInUser?.role !== 'lab' || !labPatientIdentity) return;
     setLabLookupBusy(true);
     const result = await apiRequest('/api/lab/request-access', {
       method: 'POST', labId: loggedInUser.id,
@@ -1192,7 +1486,7 @@ export default function App() {
 
   const handleLabReportSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (loggedInUser?.role !== 'lab' || loggedInUser.id !== 'lab-demo' || !labPatientIdentity || labAccessStatus !== 'GRANTED') { showToast('The patient must approve your active laboratory report request before you can save a result.'); return; }
+    if (loggedInUser?.role !== 'lab' || !labPatientIdentity || labAccessStatus !== 'GRANTED') { showToast('The patient must approve your active laboratory report request before you can save a result.'); return; }
     setLabSaveBusy(true);
     const result = await apiRequest('/api/lab/reports', {
       method: 'POST', labId: loggedInUser.id,
@@ -1445,7 +1739,7 @@ export default function App() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `healthpass-fhir-r4-${walletData?.patient?.healthPassId || 'HP-DEMO-0417'}.json`;
+    a.download = `healthpass-fhir-r4-${walletData?.patient?.healthPassId || loggedInUser?.healthPassId || 'record'}.json`;
     a.click();
     URL.revokeObjectURL(url);
     showToast('HL7 FHIR R4 Bundle exported.');
@@ -1469,7 +1763,7 @@ export default function App() {
     setDoctorRecord(null);
     setDoctorConsentError(null);
     setAiExplanation(null);
-    setDemoStorageWarning('');
+    // demoStorageWarning removed
     await Promise.all(DEMO_PATIENTS.map(async (patient) => { try { await clearEncryptedOfflineSummary(patient.id); } catch { /* Reset remains available even if an old encrypted cache cannot be cleared. */ } }));
     await fetchPatientWallet('pat-1');
     await fetchDoctorRecord('pat-1', 'doc-village');
@@ -1498,13 +1792,13 @@ export default function App() {
   // ============================================================================
   const renderPatientPane = (isSplit = false) => {
     const pat = walletData?.patient || {
-      id: 'pat-1',
-      name: 'Demo Patient (Ananya Rao)',
-      age: 42,
-      gender: 'Female',
-      bloodGroup: 'O+',
-      healthPassId: 'HP-DEMO-0417',
-      abhaNumber: '91-4820-7391-0417',
+      id: activePatientId,
+      name: loggedInUser?.role === 'patient' ? loggedInUser.name : 'Patient',
+      age: undefined,
+      gender: '',
+      bloodGroup: '',
+      healthPassId: loggedInUser?.healthPassId || '',
+      abhaNumber: '',
     };
     const rec = walletData?.record || {
       allergies: [],
@@ -1605,34 +1899,19 @@ export default function App() {
       <div className="space-y-5">
         <div className="clay-card p-3.5 sm:p-4 flex flex-wrap items-center justify-between gap-3">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="text-xs font-bold text-[#0E7C86] inline-flex items-center gap-1">
-              <Users className="w-4 h-4" />
-              <span>{ui('Choose a patient:')}</span>
+            <span className="text-xs font-bold text-[#0E7C86] inline-flex items-center gap-1.5">
+              <ShieldCheck className="w-4 h-4" />
+              <span>{loggedInUser?.role === 'patient' ? `${loggedInUser.name} (${loggedInUser.healthPassId || 'HealthPass ID'})` : pat?.name ? `${pat.name} (${pat.healthPassId || ''})` : ui('Patient Records')}</span>
             </span>
-            {DEMO_PATIENTS.map((p) => (
-              <button
-                key={p.id}
-                type="button"
-                onClick={() => setActivePatientId(p.id)}
-                className={`min-h-[38px] px-3 py-1.5 rounded-xl text-xs font-bold transition-colors cursor-pointer ${
-                  activePatientId === p.id
-                    ? 'bg-[#0E7C86] text-white shadow-xs'
-                    : 'bg-[#F5F9FA] text-[#1F2D3D] border border-[#DDE7EA] hover:bg-white'
-                }`}
-              >
-                {p.name.split(' (')[0]} ({p.healthPassId})
-              </button>
-            ))}
           </div>
 
           <button
             type="button"
             onClick={() => setHelperMode(!helperMode)}
-            className={`min-h-[38px] px-3 py-1.5 rounded-xl text-xs font-bold border transition-colors inline-flex items-center gap-1.5 cursor-pointer ${
-              helperMode
-                ? 'bg-[#FFFBEB] border-[#E8A317] text-[#92400E]'
-                : 'bg-white border-[#DDE7EA] text-[#5B6B7A]'
-            }`}
+            className={`min-h-[38px] px-3 py-1.5 rounded-xl text-xs font-bold border transition-colors inline-flex items-center gap-1.5 cursor-pointer ${helperMode
+              ? 'bg-[#FFFBEB] border-[#E8A317] text-[#92400E]'
+              : 'bg-white border-[#DDE7EA] text-[#5B6B7A]'
+              }`}
           >
             <UserCheck className="w-3.5 h-3.5" />
             <span>{helperMode ? 'Assisted Mode: ON' : 'Trusted Helper Mode'}</span>
@@ -1673,6 +1952,20 @@ export default function App() {
               <StatusChip status="PENDING" label={translateUiPhrase('AWAITING YOUR CONSENT', lang)} lang={lang} />
             </div>
 
+            {pg.otpCode && (
+              <div className="p-3.5 rounded-xl bg-[#EFF6FF] border border-[#BFDBFE] space-y-1">
+                <div className="text-[11px] font-extrabold uppercase tracking-wide text-[#1D4ED8]">
+                  In-person verification code
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="font-mono text-lg font-extrabold tracking-[0.3em] text-[#1F2D3D]">{pg.otpCode}</span>
+                </div>
+                <p className="text-[11px] text-[#1E40AF]">
+                  Share this code only with the requesting doctor in person. It is never shown to the provider and becomes invalid after approval or five failed attempts.
+                </p>
+              </div>
+            )}
+
             <div className="p-3.5 rounded-xl bg-white border border-[#DDE7EA] space-y-2.5">
               <div className="text-xs font-bold text-[#1F2D3D]">{t.whatToShare}:</div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -1681,11 +1974,10 @@ export default function App() {
                   return (
                     <label
                       key={cat}
-                      className={`flex items-center gap-2.5 p-2.5 rounded-xl border text-xs font-bold cursor-pointer transition-colors ${
-                        checked
-                          ? 'bg-[#0E7C86]/10 border-[#0E7C86] text-[#1F2D3D]'
-                          : 'bg-[#F5F9FA] border-[#DDE7EA] text-[#5B6B7A]'
-                      }`}
+                      className={`flex items-center gap-2.5 p-2.5 rounded-xl border text-xs font-bold cursor-pointer transition-colors ${checked
+                        ? 'bg-[#0E7C86]/10 border-[#0E7C86] text-[#1F2D3D]'
+                        : 'bg-[#F5F9FA] border-[#DDE7EA] text-[#5B6B7A]'
+                        }`}
                     >
                       <input
                         type="checkbox"
@@ -1781,7 +2073,7 @@ export default function App() {
         {walletData?.emergencyLinks && walletData.emergencyLinks.length > 0 && (
           <PatientEmergencyLinksPanel
             patientId={pat.id}
-            healthPassId={pat.healthPassId || 'HP-DEMO-0417'}
+            healthPassId={pat.healthPassId || ''}
             emergencyLinks={walletData.emergencyLinks}
             lang={lang}
             onUpdated={() => fetchPatientWallet(activePatientId)}
@@ -1826,19 +2118,17 @@ export default function App() {
                 key={tab.id}
                 type="button"
                 onClick={() => setPatientTab(tab.id)}
-                className={`min-h-[48px] px-2.5 py-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
-                  active
-                    ? 'clay-btn-primary shadow-xs'
-                    : 'bg-white border border-[#DDE7EA] text-[#1F2D3D] hover:bg-[#F5F9FA]'
-                }`}
+                className={`min-h-[48px] px-2.5 py-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${active
+                  ? 'clay-btn-primary shadow-xs'
+                  : 'bg-white border border-[#DDE7EA] text-[#1F2D3D] hover:bg-[#F5F9FA]'
+                  }`}
               >
                 <Icon className="w-4 h-4 shrink-0" />
                 <span className="truncate">{tab.label}</span>
                 {'badge' in tab && tab.badge ? (
                   <span
-                    className={`px-1.5 py-0.5 rounded-md text-[10px] font-mono ${
-                      active ? 'bg-white text-[#0E7C86]' : 'bg-[#0E7C86] text-white'
-                    }`}
+                    className={`px-1.5 py-0.5 rounded-md text-[10px] font-mono ${active ? 'bg-white text-[#0E7C86]' : 'bg-[#0E7C86] text-white'
+                      }`}
                   >
                     {tab.badge}
                   </span>
@@ -1851,6 +2141,12 @@ export default function App() {
         {/* TAB 1: MY HEALTH */}
         {patientTab === 'HEALTH' && (
           <div className="space-y-5">
+            {/* AI Medical Checkup Analyser & Historical Trends */}
+            <MedicalCheckupAnalyser language={lang as 'EN' | 'TE' | 'HI'} />
+
+            {/* Continuous Chronological Health Timeline */}
+            <ContinuousHealthTimeline language={lang as 'EN' | 'TE' | 'HI'} />
+
             <section className="clay-card p-4 sm:p-5 space-y-3" aria-labelledby="record-completeness-heading">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div><h3 id="record-completeness-heading" className="text-base font-bold text-[#1F2D3D]">{ui('Medical Record Completeness')}</h3><p className="text-xs text-[#5B6B7A]">{ui('A record overview to help you review your information. Empty sections do not imply that a record is needed.')}</p></div>
@@ -1876,7 +2172,7 @@ export default function App() {
                 <div><h3 id="offline-summary-heading" className="text-base font-bold text-[#1F2D3D]">{ui('Offline Medical Summary')}</h3><p className="text-xs text-[#5B6B7A]">{ui('A small encrypted copy of allergies, current medicines, important conditions, emergency contact, and update time.')}</p></div>
                 <span className={`px-2 py-1 rounded-lg text-[10px] font-bold ${isOnline ? 'bg-[#ECFDF5] text-[#1E8E5A]' : 'bg-[#FEF3C7] text-[#92400E]'}`}>{isOnline ? 'Online' : 'Offline'}</span>
               </div>
-                <p className="text-[11px] text-[#5B6B7A]">{ui('Offline information may be outdated. It is encrypted on this device, requires a passphrase to unlock, and is scoped to the signed-in patient.')}</p>
+              <p className="text-[11px] text-[#5B6B7A]">{ui('Offline information may be outdated. It is encrypted on this device, requires a passphrase to unlock, and is scoped to the signed-in patient.')}</p>
               {loggedInUser?.role === 'patient' && loggedInUser.id === activePatientId ? <>
                 <label className="block max-w-sm text-[11px] font-semibold text-[#5B6B7A]">{ui('Device passphrase (10 characters minimum)')}<input type="password" autoComplete="new-password" value={offlinePassphrase} onChange={(e) => setOfflinePassphrase(e.target.value)} className="block mt-1 w-full min-h-[38px] px-3 rounded-xl border border-[#DDE7EA] bg-white text-xs" /></label>
                 <div className="flex flex-wrap gap-2">
@@ -1887,7 +2183,7 @@ export default function App() {
                 {offlineSummary?.patientId === activePatientId && <div className="p-3 rounded-xl bg-[#FEF3C7]/60 border border-[#FCD34D] space-y-2">
                   <p className="text-xs font-bold text-[#92400E]">{ui('Saved offline copy · may be outdated')}</p>
                   <p className="text-[11px] text-[#5B6B7A]">{ui('Last updated')}: {offlineSummary.updatedAt ? new Date(offlineSummary.updatedAt).toLocaleString() : ui('Unknown')}</p>
-                  {([['Allergies',offlineSummary.allergies],['Current medications',offlineSummary.currentMedications],['Important medical conditions',offlineSummary.conditions],['Emergency contacts',offlineSummary.emergencyContacts]] as const).map(([label,values]) => <p key={label} className="text-xs text-[#1F2D3D]"><strong>{ui(label)}:</strong> {values?.length ? values.join('; ') : ui('Information not provided')}</p>)}
+                  {([['Allergies', offlineSummary.allergies], ['Current medications', offlineSummary.currentMedications], ['Important medical conditions', offlineSummary.conditions], ['Emergency contacts', offlineSummary.emergencyContacts]] as const).map(([label, values]) => <p key={label} className="text-xs text-[#1F2D3D]"><strong>{ui(label)}:</strong> {values?.length ? values.join('; ') : ui('Information not provided')}</p>)}
                 </div>}
                 <p className="text-[10px] text-[#5B6B7A]">{ui('When connected again, the app refreshes this copy only if server record timestamps are newer. Offline changes are not sent to or used to overwrite server records.')}</p>
               </> : <p className="text-xs text-[#5B6B7A]">{ui('Sign in as the patient to save or unlock this private offline summary.')}</p>}
@@ -1899,6 +2195,39 @@ export default function App() {
               onCopyId={(id) => showToast(`Copied HealthPass ID: ${id}`)}
               onShowQr={() => setPatientTab('QR')}
             />
+
+            {/* 3D Interactive Holographic HealthPass Card Showcase */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 items-center clay-card p-5 bg-gradient-to-r from-teal-50/50 via-white to-sky-50/50 border border-teal-100 overflow-hidden relative">
+              <div className="lg:col-span-2 flex flex-col items-center sm:items-start space-y-2">
+                <div className="flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-teal-500 animate-pulse" />
+                  <span className="text-[11px] font-extrabold uppercase tracking-widest text-[#0E7C86]">
+                    3D Interactive Smart Card
+                  </span>
+                </div>
+                <h3 className="text-lg font-bold text-[#1F2D3D]">
+                  Physical & Offline Holographic HealthPass
+                </h3>
+                <p className="text-xs text-[#5B6B7A] max-w-md">
+                  Tilt the card in 3D with your cursor or tap to flip it and inspect first-responder emergency data, allergy warnings, and offline ABHA pass.
+                </p>
+                <div className="w-full pt-2">
+                  <ThreeHealthCard3D
+                    patientName={pat.name}
+                    healthPassId={pat.healthPassId || ''}
+                    bloodGroup={pat.bloodGroup || 'O+'}
+                    age={pat.age || 32}
+                    gender={pat.gender || 'Female'}
+                    allergies={rec.allergies || []}
+                    emergencyContact={pat.emergencyPhone || '+91 98765 43210'}
+                  />
+                </div>
+              </div>
+              <div className="flex flex-col items-center justify-center p-2 rounded-2xl bg-white/80 border border-slate-100 shadow-sm">
+                <span className="text-[10px] font-bold text-slate-500 mb-1">REAL-TIME BIOMETRIC ORB</span>
+                <ThreeHealthSphere categories={['Cardiac', 'Metabolic', 'Vitals', 'Allergies']} vitalScore={98} />
+              </div>
+            </div>
 
             <div className="clay-card p-3.5 sm:p-4 flex flex-wrap items-center justify-between gap-3">
               <div className="text-xs font-bold text-[#1F2D3D]">
@@ -1938,14 +2267,14 @@ export default function App() {
                 {!patientProfileEditing && <button type="button" onClick={() => { setPatientProfileDraft({ ...profileFallback, ...savedHealthProfile }); setPatientProfileEditing(true); }} className="min-h-[38px] px-3 rounded-xl border border-[#DDE7EA] bg-white text-xs font-bold text-[#0E7C86]">{ui('Edit profile')}</button>}
               </div>
               {patientProfileEditing ? <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {([['knownAllergies','Known allergies'],['currentMedications','Current medications'],['healthConditions','Existing health conditions'],['pastSurgeries','Relevant past surgeries']] as const).map(([key,label]) => <label key={key} className="text-xs font-semibold text-[#5B6B7A]">{ui(label)}<textarea value={patientProfileDraft?.[key] || ''} onChange={(e) => setPatientProfileDraft((current: any) => ({ ...current, [key]: e.target.value }))} placeholder={ui('Unknown')} rows={2} className="block mt-1 w-full p-2 rounded-xl border border-[#DDE7EA] bg-white text-xs text-[#1F2D3D]" /></label>)}
+                {([['knownAllergies', 'Known allergies'], ['currentMedications', 'Current medications'], ['healthConditions', 'Existing health conditions'], ['pastSurgeries', 'Relevant past surgeries']] as const).map(([key, label]) => <label key={key} className="text-xs font-semibold text-[#5B6B7A]">{ui(label)}<textarea value={patientProfileDraft?.[key] || ''} onChange={(e) => setPatientProfileDraft((current: any) => ({ ...current, [key]: e.target.value }))} placeholder={ui('Unknown')} rows={2} className="block mt-1 w-full p-2 rounded-xl border border-[#DDE7EA] bg-white text-xs text-[#1F2D3D]" /></label>)}
                 <label className="text-xs font-semibold text-[#5B6B7A]">{ui('Blood group (optional)')}<input value={patientProfileDraft?.bloodGroup || ''} onChange={(e) => setPatientProfileDraft((current: any) => ({ ...current, bloodGroup: e.target.value }))} placeholder={ui('Unknown')} className="block mt-1 w-full min-h-[38px] px-2 rounded-xl border border-[#DDE7EA] bg-white text-xs text-[#1F2D3D]" /></label>
                 <label className="text-xs font-semibold text-[#5B6B7A]">{ui('Emergency contact name')}<input value={patientProfileDraft?.emergencyContactName || ''} onChange={(e) => setPatientProfileDraft((current: any) => ({ ...current, emergencyContactName: e.target.value }))} placeholder={ui('Unknown')} className="block mt-1 w-full min-h-[38px] px-2 rounded-xl border border-[#DDE7EA] bg-white text-xs text-[#1F2D3D]" /></label>
                 <label className="text-xs font-semibold text-[#5B6B7A]">{ui('Emergency contact relation')}<input value={patientProfileDraft?.emergencyContactRelation || ''} onChange={(e) => setPatientProfileDraft((current: any) => ({ ...current, emergencyContactRelation: e.target.value }))} placeholder={ui('Unknown')} className="block mt-1 w-full min-h-[38px] px-2 rounded-xl border border-[#DDE7EA] bg-white text-xs text-[#1F2D3D]" /></label>
                 <label className="text-xs font-semibold text-[#5B6B7A]">{ui('Emergency contact phone')}<input value={patientProfileDraft?.emergencyContactPhone || ''} onChange={(e) => setPatientProfileDraft((current: any) => ({ ...current, emergencyContactPhone: e.target.value }))} placeholder={ui('Unknown')} className="block mt-1 w-full min-h-[38px] px-2 rounded-xl border border-[#DDE7EA] bg-white text-xs text-[#1F2D3D]" /></label>
                 <div className="sm:col-span-2 flex gap-2"><button type="button" disabled={patientProfileSaving} onClick={savePatientHealthProfile} className="min-h-[38px] px-4 rounded-xl clay-btn-primary text-xs font-bold disabled:opacity-60">{patientProfileSaving ? 'Saving…' : ui('Save profile')}</button><button type="button" onClick={() => setPatientProfileEditing(false)} className="min-h-[38px] px-4 rounded-xl border border-[#DDE7EA] bg-white text-xs font-bold">{ui('Cancel')}</button></div>
               </div> : <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
-                {([['Known allergies',savedHealthProfile.knownAllergies || profileFallback.knownAllergies],['Current medications',savedHealthProfile.currentMedications || profileFallback.currentMedications],['Existing health conditions',savedHealthProfile.healthConditions || profileFallback.healthConditions],['Relevant past surgeries',savedHealthProfile.pastSurgeries],['Blood group',savedHealthProfile.bloodGroup || profileFallback.bloodGroup],['Emergency contact',[savedHealthProfile.emergencyContactName || profileFallback.emergencyContactName,savedHealthProfile.emergencyContactRelation || profileFallback.emergencyContactRelation,savedHealthProfile.emergencyContactPhone || profileFallback.emergencyContactPhone].filter(Boolean).join(' · ')]] as const).map(([label,value]) => <div key={label} className="p-3 rounded-xl bg-[#F5F9FA] border border-[#DDE7EA]"><span className="font-bold text-[#1F2D3D]">{label}: </span><span className="text-[#5B6B7A]">{value || 'Unknown'}</span><div className="mt-1 text-[10px] text-[#5B6B7A]">Source: {savedHealthProfile.source || (value ? 'Existing HealthPass record' : 'Unknown')} · Status: {savedHealthProfile.verificationStatus || (value ? 'Verification status unavailable' : 'Unknown')} · Updated: {savedHealthProfile.updatedAt ? new Date(savedHealthProfile.updatedAt).toLocaleDateString() : 'Unknown'}</div></div>)}
+                {([['Known allergies', savedHealthProfile.knownAllergies || profileFallback.knownAllergies], ['Current medications', savedHealthProfile.currentMedications || profileFallback.currentMedications], ['Existing health conditions', savedHealthProfile.healthConditions || profileFallback.healthConditions], ['Relevant past surgeries', savedHealthProfile.pastSurgeries], ['Blood group', savedHealthProfile.bloodGroup || profileFallback.bloodGroup], ['Emergency contact', [savedHealthProfile.emergencyContactName || profileFallback.emergencyContactName, savedHealthProfile.emergencyContactRelation || profileFallback.emergencyContactRelation, savedHealthProfile.emergencyContactPhone || profileFallback.emergencyContactPhone].filter(Boolean).join(' · ')]] as const).map(([label, value]) => <div key={label} className="p-3 rounded-xl bg-[#F5F9FA] border border-[#DDE7EA]"><span className="font-bold text-[#1F2D3D]">{label}: </span><span className="text-[#5B6B7A]">{value || 'Unknown'}</span><div className="mt-1 text-[10px] text-[#5B6B7A]">Source: {savedHealthProfile.source || (value ? 'Existing HealthPass record' : 'Unknown')} · Status: {savedHealthProfile.verificationStatus || (value ? 'Verification status unavailable' : 'Unknown')} · Updated: {savedHealthProfile.updatedAt ? new Date(savedHealthProfile.updatedAt).toLocaleDateString() : 'Unknown'}</div></div>)}
               </div>}
               {patientProfileMessage && <p role="status" className="text-xs text-[#0E7C86]">{patientProfileMessage}</p>}
             </section>
@@ -2101,7 +2430,7 @@ export default function App() {
                       />
                     </div>
                     <p className="text-xs text-[#5B6B7A]">
-                <strong>{ui('Doctor')}:</strong> {vis.doctorName} · <strong>{ui('Complaint')}:</strong>{' '}
+                      <strong>{ui('Doctor')}:</strong> {vis.doctorName} · <strong>{ui('Complaint')}:</strong>{' '}
                       {vis.chiefComplaint}
                     </p>
                     <p className="text-xs text-[#1F2D3D]">{vis.clinicalNotes}</p>
@@ -2115,6 +2444,9 @@ export default function App() {
         {/* TAB 2: MY MEDICINES */}
         {patientTab === 'MEDICINES' && (
           <div className="space-y-5">
+            {/* Smart Reminder Engine for Medicines & Visits */}
+            <SmartReminderWorkspace language={lang as 'EN' | 'TE' | 'HI'} />
+
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
                 <h3 className="text-lg font-bold text-[#1F2D3D]">{t.activeMedicines}</h3>
@@ -2238,7 +2570,7 @@ export default function App() {
               <div><h3 className="text-base font-bold text-[#1F2D3D]">{ui('Download Personal Health Report')}</h3><p className="text-xs text-[#5B6B7A]">{ui('Choose categories and an optional date range, then preview the authorized records before downloading a PDF summary. Original documents remain separate.')}</p></div>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
                 {MEDICAL_RECORD_CATEGORIES.map((category) => <label key={category} className="min-h-[38px] flex items-center gap-2 px-3 rounded-xl border border-[#DDE7EA] bg-white text-xs text-[#1F2D3D]">
-                <input type="checkbox" checked={healthReportCategories.includes(category)} onChange={(e) => { setHealthReportCategories((current) => e.target.checked ? [...current, category] : current.filter((value) => value !== category)); setHealthReportPreview(null); setHealthReportError(''); }} className="accent-[#0E7C86]" />{translateMedicalCategory(category, lang)}
+                  <input type="checkbox" checked={healthReportCategories.includes(category)} onChange={(e) => { setHealthReportCategories((current) => e.target.checked ? [...current, category] : current.filter((value) => value !== category)); setHealthReportPreview(null); setHealthReportError(''); }} className="accent-[#0E7C86]" />{translateMedicalCategory(category, lang)}
                 </label>)}
               </div>
               <div className="flex flex-wrap items-end gap-2">
@@ -2292,7 +2624,9 @@ export default function App() {
             </div>
 
             <div className="space-y-3">
-              {filteredMedicalRecords.length === 0 ? (
+              {medicalRecords.length === 0 ? (
+                <div className="clay-card p-5 text-center text-sm text-[#5B6B7A]">{ui('No medical records yet.')}</div>
+              ) : filteredMedicalRecords.length === 0 ? (
                 <div className="clay-card p-5 text-center text-sm text-[#5B6B7A]">{ui('No medical records match these filters.')}</div>
               ) : filteredMedicalRecords.map((rep: any) => (
                 <div id={`medical-record-${rep.id}`} key={rep.id} className="clay-card p-4 sm:p-5 space-y-2.5">
@@ -2449,11 +2783,10 @@ export default function App() {
                       return (
                         <span
                           key={cat}
-                          className={`px-2.5 py-1 rounded-lg text-xs font-semibold ${
-                            isShared
-                              ? 'bg-[#ECFDF5] text-[#1E8E5A] border border-[#A7F3D0]'
-                              : 'bg-[#FEF2F2] text-[#D32F2F] border border-[#FECACA]'
-                          }`}
+                          className={`px-2.5 py-1 rounded-lg text-xs font-semibold ${isShared
+                            ? 'bg-[#ECFDF5] text-[#1E8E5A] border border-[#A7F3D0]'
+                            : 'bg-[#FEF2F2] text-[#D32F2F] border border-[#FECACA]'
+                            }`}
                         >
                           {isShared ? `✓ ${translateMedicalCategory(cat, lang)}` : `🔒 ${translateMedicalCategory(cat, lang)}`}
                         </span>
@@ -2536,8 +2869,26 @@ export default function App() {
   };
 
   // ============================================================================
-  // RENDER DOCTOR POINT-OF-CARE CONSOLE PANE
-  // ============================================================================
+  const handleDoctorSidebarClick = (tabId: 'OVERVIEW' | 'PATIENTS' | 'REQUESTS' | 'RECORDS' | 'CONSULT' | 'HISTORY' | 'PROFILE') => {
+    setDoctorSidebarTab(tabId);
+    setSidebarOpen(false);
+    if (tabId === 'PATIENTS') {
+      const el = document.getElementById('doctor-patient-search') || document.getElementById('doctor-dashboard-patient-search');
+      el?.focus();
+    } else if (tabId === 'REQUESTS') {
+      const el = document.getElementById('doctor-access-request');
+      el?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    } else if (tabId === 'CONSULT') {
+      const el = document.getElementById('doctor-consultations-section') || document.getElementById('doctor-prescriptions-section');
+      el?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    } else if (tabId === 'RECORDS') {
+      const el = document.getElementById('doctor-records-section');
+      el?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    } else if (tabId === 'PROFILE') {
+      setShowClinicRegModal(true);
+    }
+  };
+
   const renderDoctorPane = () => {
     const isUnlocked = Boolean(doctorRecord && !doctorConsentError);
     const isRevoked = doctorConsentError?.code === 'ACCESS_REVOKED';
@@ -2617,11 +2968,10 @@ export default function App() {
                     fetchDoctorRecord(activePatientId, doc.id);
                     fetchDoctorAuthorizedList(doc.id);
                   }}
-                  className={`p-3 rounded-2xl border text-left transition-all cursor-pointer ${
-                    selected
-                      ? 'border-2 border-[#0E7C86] bg-[#0E7C86]/5 shadow-xs'
-                      : 'border-[#DDE7EA] bg-white hover:bg-[#F5F9FA]'
-                  }`}
+                  className={`p-3 rounded-2xl border text-left transition-all cursor-pointer ${selected
+                    ? 'border-2 border-[#0E7C86] bg-[#0E7C86]/5 shadow-xs'
+                    : 'border-[#DDE7EA] bg-white hover:bg-[#F5F9FA]'
+                    }`}
                 >
                   <div className="flex items-center justify-between gap-1">
                     <span className="text-xs font-extrabold text-[#0E7C86]">
@@ -2792,14 +3142,14 @@ export default function App() {
             {doctorRecord.healthProfileSection?.shared && <section className="clay-card p-4 space-y-2">
               <h3 className="text-sm font-bold text-[#1F2D3D]">{ui('Patient Health Profile · Consent-shared details')}</h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
-                {([['Known allergies',doctorRecord.healthProfileSection.profile?.knownAllergies],['Current medications',doctorRecord.healthProfileSection.profile?.currentMedications],['Existing health conditions',doctorRecord.healthProfileSection.profile?.healthConditions],['Relevant past surgeries',doctorRecord.healthProfileSection.profile?.pastSurgeries],['Blood group',doctorRecord.healthProfileSection.profile?.bloodGroup],['Emergency contact',[doctorRecord.healthProfileSection.profile?.emergencyContactName,doctorRecord.healthProfileSection.profile?.emergencyContactRelation,doctorRecord.healthProfileSection.profile?.emergencyContactPhone].filter(Boolean).join(' · ')]] as const).filter(([,value]) => value).map(([label,value]) => <div key={label} className="p-2 rounded-lg bg-[#F5F9FA] border border-[#DDE7EA]"><b>{label}: </b>{value}</div>)}
+                {([['Known allergies', doctorRecord.healthProfileSection.profile?.knownAllergies], ['Current medications', doctorRecord.healthProfileSection.profile?.currentMedications], ['Existing health conditions', doctorRecord.healthProfileSection.profile?.healthConditions], ['Relevant past surgeries', doctorRecord.healthProfileSection.profile?.pastSurgeries], ['Blood group', doctorRecord.healthProfileSection.profile?.bloodGroup], ['Emergency contact', [doctorRecord.healthProfileSection.profile?.emergencyContactName, doctorRecord.healthProfileSection.profile?.emergencyContactRelation, doctorRecord.healthProfileSection.profile?.emergencyContactPhone].filter(Boolean).join(' · ')]] as const).filter(([, value]) => value).map(([label, value]) => <div key={label} className="p-2 rounded-lg bg-[#F5F9FA] border border-[#DDE7EA]"><b>{label}: </b>{value}</div>)}
               </div>
               <p className="text-[10px] text-[#5B6B7A]">Source: {doctorRecord.healthProfileSection.profile?.source || 'Unknown'} · Status: {doctorRecord.healthProfileSection.profile?.verificationStatus || 'Unknown'} · Updated: {doctorRecord.healthProfileSection.profile?.updatedAt ? new Date(doctorRecord.healthProfileSection.profile.updatedAt).toLocaleDateString() : 'Unknown'}</p>
             </section>}
 
             <AllergyBanner allergies={doctorRecord.allergies} lang={lang} />
 
-            <div className="space-y-3">
+            <div id="doctor-prescriptions-section" className="space-y-3">
               <h3 className="text-base font-bold text-[#1F2D3D] flex items-center gap-2">
                 <Pill className="w-4 h-4 text-[#0E7C86]" />
                 <span>1. Active Medicines & Prescriptions</span>
@@ -2823,7 +3173,7 @@ export default function App() {
               )}
             </div>
 
-            <div className="space-y-3">
+            <div id="doctor-consultations-section" className="space-y-3">
               <h3 className="text-base font-bold text-[#1F2D3D] flex items-center gap-2">
                 <Stethoscope className="w-4 h-4 text-[#1769AA]" />
                 <span>2. Medical History & Consultations</span>
@@ -2846,7 +3196,7 @@ export default function App() {
               )}
             </div>
 
-            <div className="space-y-3">
+            <div id="doctor-records-section" className="space-y-3">
               <h3 className="text-base font-bold text-[#1F2D3D] flex items-center gap-2">
                 <FileText className="w-4 h-4 text-[#0E7C86]" />
                 <span>3. Categorized Medical Records</span>
@@ -2911,87 +3261,429 @@ export default function App() {
 
   return (
     <div
-      className={`min-h-screen flex flex-col ${
-        highContrast ? 'high-contrast' : ''
-      } ${fontScale === 'large' ? 'text-[17px]' : fontScale === 'xlarge' ? 'text-[19px]' : ''}`}
+      className={`min-h-screen flex flex-col relative ${highContrast ? 'high-contrast' : ''
+        } ${fontScale === 'large' ? 'text-[17px]' : fontScale === 'xlarge' ? 'text-[19px]' : ''}`}
     >
+      {/* Ambient 3D Constellation Background Scene */}
+      <ThreeBackgroundScene />
+
       {/* Global navigation */}
       <header className="hp-site-header sticky top-0 z-50 border-b border-slate-200 bg-white/95 shadow-sm backdrop-blur-xl no-print" onKeyDown={(event) => { if (event.key === 'Escape') { setShowMoreRolesDropdown(false); setShowLanguageDropdown(false); setMobileMenuOpen(false); } }}>
         <div className="hp-header-inner max-w-[1440px] mx-auto px-3 sm:px-6 min-h-16 flex items-center justify-between gap-2 sm:gap-4">
-          <button type="button" onClick={() => { if (loggedInUser?.role === 'patient') { setMode('PATIENT'); setPatientTab('HEALTH'); } else if (loggedInUser?.role === 'doctor') { setMode('DOCTOR'); setProviderNavGroup('WORKSPACE'); } else { handleNavigateHome(); } setMobileMenuOpen(false); }} className="hp-brand flex items-center gap-3 text-left shrink-0 rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0E7C86]" title="HealthPass home">
+          {/* Brand Logo & Name - Far Left */}
+          <button type="button" onClick={() => { if (loggedInUser?.role === 'patient') { setMode('PATIENT'); setPatientTab('HEALTH'); } else if (loggedInUser?.role === 'doctor') { setMode('DOCTOR'); setDoctorSidebarTab('OVERVIEW'); } else { handleNavigateHome(); } setMobileMenuOpen(false); }} className="hp-brand flex items-center gap-3 text-left shrink-0 rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0E7C86]" title="HealthPass home">
             <span className="hp-brand-mark" aria-hidden="true"><HeartPulse className="w-6 h-6 text-white relative z-10" /></span>
             <span className="font-display font-extrabold text-[1.65rem] sm:text-[1.85rem] leading-none tracking-tight text-slate-900">HealthPass</span>
           </button>
 
-          <nav aria-label="Primary navigation" className="hp-desktop-nav hidden xl:flex items-center justify-center gap-1">
-            {loggedInUser?.role === 'patient' || mode === 'PATIENT' ? <>
-              <button type="button" onClick={() => { setMode('PATIENT'); setPatientTab('HEALTH'); }} aria-current={mode === 'PATIENT' && patientTab === 'HEALTH' ? 'page' : undefined} className={`hp-nav-link ${mode === 'PATIENT' && patientTab === 'HEALTH' ? 'hp-nav-active' : ''}`}>{ui('Dashboard')}</button>
-              <button type="button" onClick={() => { setMode('PATIENT'); setPatientTab('REPORTS'); }} aria-current={mode === 'PATIENT' && patientTab === 'REPORTS' ? 'page' : undefined} className={`hp-nav-link ${mode === 'PATIENT' && patientTab === 'REPORTS' ? 'hp-nav-active' : ''}`}>{ui('My Health')}</button>
-              <button type="button" onClick={() => { setMode('PATIENT'); setPatientTab('CONSENT'); }} aria-current={mode === 'PATIENT' && patientTab === 'CONSENT' ? 'page' : undefined} className={`hp-nav-link ${mode === 'PATIENT' && patientTab === 'CONSENT' ? 'hp-nav-active' : ''}`}>{ui('Access Requests')}</button>
-            </> : loggedInUser?.role === 'doctor' || mode === 'DOCTOR' ? <>
-              <button type="button" onClick={() => { setMode('DOCTOR'); setProviderNavGroup('WORKSPACE'); window.scrollTo({ top: 0, behavior: 'smooth' }); }} aria-current={mode === 'DOCTOR' && providerNavGroup === 'WORKSPACE' ? 'page' : undefined} className={`hp-nav-link ${mode === 'DOCTOR' && providerNavGroup === 'WORKSPACE' ? 'hp-nav-active' : ''}`}>{ui('Dashboard')}</button>
-              <button type="button" onClick={() => { setMode('DOCTOR'); window.setTimeout(() => document.getElementById('doctor-patient-search')?.focus(), 0); }} className="hp-nav-link">{ui('Find Patient')}</button>
-              <button type="button" onClick={() => { setMode('DOCTOR'); window.setTimeout(() => document.getElementById('doctor-access-request')?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 0); }} className="hp-nav-link">{ui('Access Requests')}</button>
-              <button type="button" onClick={() => { setMode('DOCTOR'); if (doctorRecord) setShowConsultationModal(true); else window.setTimeout(() => document.getElementById('doctor-access-request')?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 0); }} className="hp-nav-link">{ui('Consultations')}</button>
-            </> : <>
-              <button type="button" onClick={handleNavigateHome} aria-current={mode === 'LANDING' ? 'page' : undefined} className={`hp-nav-link ${mode === 'LANDING' ? 'hp-nav-active' : ''}`}>{tr('navHome', lang)}</button>
-              <button type="button" onClick={handleNavigateHowItWorks} className="hp-nav-link">{tr('howItWorks', lang)}</button>
-            </>}
-            <button type="button" onClick={() => { setMode('PATIENT'); setPatientTab('HEALTH'); }} aria-current={mode === 'PATIENT' ? 'page' : undefined} className={`hp-nav-link ${mode === 'PATIENT' ? 'hp-nav-active' : ''}`}>{tr('patientPortal', lang)}</button>
-            <button type="button" onClick={() => setMode('DOCTOR')} aria-current={mode === 'DOCTOR' ? 'page' : undefined} className={`hp-nav-link ${mode === 'DOCTOR' ? 'hp-nav-active' : ''}`}>{tr('doctorPortal', lang)}</button>
+          {/* Center Navigation Row: Home, My Health, Doctors & Care, Emergency, More */}
+          <nav aria-label="Primary navigation" className="hp-desktop-nav hidden lg:flex items-center justify-center gap-1.5 flex-nowrap">
+            <button type="button" onClick={handleNavigateHome} aria-current={mode === 'LANDING' ? 'page' : undefined} className={`hp-nav-link ${mode === 'LANDING' ? 'hp-nav-active' : ''}`}>{tr('navHome', lang)}</button>
+            <button type="button" onClick={() => { setMode('PATIENT'); setPatientTab('HEALTH'); }} aria-current={mode === 'PATIENT' ? 'page' : undefined} className={`hp-nav-link ${mode === 'PATIENT' ? 'hp-nav-active' : ''}`}>My Health</button>
+            <button type="button" onClick={() => { setMode('DOCTOR'); setDoctorSidebarTab('OVERVIEW'); }} aria-current={mode === 'DOCTOR' ? 'page' : undefined} className={`hp-nav-link ${mode === 'DOCTOR' ? 'hp-nav-active' : ''}`}>Doctors & Care</button>
             <button type="button" onClick={() => setMode('EMERGENCY')} aria-current={mode === 'EMERGENCY' ? 'page' : undefined} className={`hp-nav-link hp-emergency-link ${mode === 'EMERGENCY' ? 'hp-emergency-active' : ''}`}>{tr('navEmergencyRecords', lang)}</button>
+
+            {/* More dropdown */}
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => { setShowMoreRolesDropdown(!showMoreRolesDropdown); setShowLanguageDropdown(false); }}
+                aria-expanded={showMoreRolesDropdown}
+                aria-haspopup="menu"
+                className={`hp-nav-link inline-flex items-center gap-1 ${showMoreRolesDropdown ? 'hp-nav-active' : ''}`}
+              >
+                <span>{ui('More')}</span>
+                <ChevronDown className={`w-3.5 h-3.5 transition-transform ${showMoreRolesDropdown ? 'rotate-180' : ''}`} />
+              </button>
+              {showMoreRolesDropdown && (
+                <>
+                  <button type="button" aria-label="Close more menu" className="fixed inset-0 z-40 cursor-default" onClick={() => setShowMoreRolesDropdown(false)} />
+                  <div role="menu" aria-label="More options" className="absolute top-full left-0 mt-2 w-64 max-h-[78vh] overflow-y-auto bg-white rounded-2xl shadow-xl border border-slate-200 p-2 z-50">
+                    {loggedInUser && (
+                      <div className="px-3 py-2 border-b border-slate-100 mb-1">
+                        <div className="text-sm font-bold text-slate-900">{loggedInUser.name}</div>
+                        <div className="text-xs text-slate-500 truncate">{loggedInUser.email}</div>
+                      </div>
+                    )}
+                    <div className="px-3 pt-1 pb-1 text-[11px] font-bold text-slate-400 uppercase tracking-wider">{ui('Care Services')}</div>
+                    <button
+                      role="menuitem"
+                      type="button"
+                      onClick={() => {
+                        setShowMoreRolesDropdown(false);
+                        setActivePatientId('pat-2');
+                        setMode('PATIENT');
+                        setPatientTab('HEALTH');
+                        showToast('Family Access: Viewing dependent family profile (Aarav Kumar, 7 yrs).');
+                      }}
+                      className="hp-menu-item"
+                    >
+                      <Users className="w-4 h-4 text-teal-600" />
+                      <span>Family Access</span>
+                    </button>
+                    <button
+                      role="menuitem"
+                      type="button"
+                      onClick={() => {
+                        setShowMoreRolesDropdown(false);
+                        showToast('Reminders: 3 active medication and checkup alerts configured.');
+                      }}
+                      className="hp-menu-item"
+                    >
+                      <Bell className="w-4 h-4 text-amber-600" />
+                      <span>Reminders</span>
+                    </button>
+                    <button
+                      role="menuitem"
+                      type="button"
+                      onClick={() => {
+                        setShowMoreRolesDropdown(false);
+                        showToast('Health Workers: ASHA & Village Health Worker offline sync enabled.');
+                      }}
+                      className="hp-menu-item"
+                    >
+                      <Hospital className="w-4 h-4 text-emerald-600" />
+                      <span>Health Workers</span>
+                    </button>
+                    <button
+                      role="menuitem"
+                      type="button"
+                      onClick={() => {
+                        setShowMoreRolesDropdown(false);
+                        setHighContrast(!highContrast);
+                        showToast(`Help & Settings: High contrast mode ${!highContrast ? 'enabled' : 'disabled'}.`);
+                      }}
+                      className="hp-menu-item"
+                    >
+                      <Shield className="w-4 h-4 text-slate-500" />
+                      <span>Help & Settings</span>
+                    </button>
+
+                    <div className="my-1.5 border-t border-slate-100" />
+                    <div className="px-3 pt-1 pb-1 text-[11px] font-bold text-slate-400 uppercase tracking-wider">{ui('Exploration')}</div>
+                    <button role="menuitem" type="button" onClick={() => { handleNavigateHowItWorks(); setShowMoreRolesDropdown(false); }} className="hp-menu-item">
+                      <Info className="w-4 h-4 text-[#0E7C86]" />
+                      <span>{tr('howItWorks', lang)}</span>
+                    </button>
+                    <button role="menuitem" type="button" onClick={() => { setMode('SPLIT_DEMO'); setShowMoreRolesDropdown(false); setMobileMenuOpen(false); }} className="hp-menu-item">
+                      <Columns className="w-4 h-4 text-[#0E7C86]" />
+                      <span>{tr('splitScreenMode', lang)}</span>
+                    </button>
+
+                    <div className="my-1.5 border-t border-slate-100" />
+                    <div className="px-3 pt-1 pb-1 text-[11px] font-bold text-slate-400 uppercase tracking-wider">{ui('Other portals')}</div>
+                    {([['PHARMACY', 'Jan Aushadhi Pharmacy'], ['LAB', 'Diagnostic Lab'], ['ADMIN', 'Registry Admin']] as const).map(([portal, label]) => (
+                      <button role="menuitem" key={portal} type="button" onClick={() => { setMode(portal); setShowMoreRolesDropdown(false); setMobileMenuOpen(false); }} className="hp-menu-item">
+                        {label}
+                      </button>
+                    ))}
+
+                    <div className="my-1.5 border-t border-slate-100" />
+                    {!loggedInUser ? (
+                      <button role="menuitem" type="button" onClick={() => { setShowLoginModal(true); setShowMoreRolesDropdown(false); }} className="hp-menu-item text-[#0E7C86]">
+                        <LogIn className="w-4 h-4" />
+                        <span>{ui('Sign in')}</span>
+                      </button>
+                    ) : (
+                      <button role="menuitem" type="button" onClick={() => { setShowMoreRolesDropdown(false); void handleLogout(); }} className="hp-menu-item text-rose-700">
+                        <LogOut className="w-4 h-4" />
+                        <span>Sign out</span>
+                      </button>
+                    )}
+                  </div>
+                </>
+              )}
+            </div>
           </nav>
 
+          {/* Right Controls: Language Selector & Sign In/Account & Mobile Hamburger */}
           <div className="flex items-center justify-end gap-1.5 sm:gap-2 shrink-0">
+            {/* Language Selector */}
             <div className="relative">
               <button type="button" onClick={() => { setShowLanguageDropdown(!showLanguageDropdown); setShowMoreRolesDropdown(false); }} aria-expanded={showLanguageDropdown} aria-haspopup="menu" className="hp-header-control" title={tr('languageSelector', lang)}>
-                <Globe className="w-4 h-4 text-[#0E7C86] shrink-0" /><span className="hidden sm:inline">{LANG_META[lang]?.nativeName || 'English'}</span><ChevronDown className="w-3 h-3 text-slate-400" />
+                <Globe className="w-4 h-4 text-[#0E7C86] shrink-0" />
+                <span className="hidden sm:inline text-xs font-bold text-slate-700">{LANG_META[lang]?.nativeName || 'English'}</span>
+                <ChevronDown className="w-3 h-3 text-slate-400" />
               </button>
-              {showLanguageDropdown && <>
-                <button type="button" aria-label="Close language menu" className="fixed inset-0 z-40 cursor-default" onClick={() => setShowLanguageDropdown(false)} />
-                <div role="menu" aria-label={tr('languageSelector', lang)} className="absolute top-full right-0 mt-2 w-56 max-h-[70vh] overflow-y-auto bg-white rounded-2xl shadow-xl border border-slate-200 p-2 z-50">
-                  {PRIMARY_UI_LANGUAGES.map((sl) => { const meta = LANG_META[sl]; const selected = lang === sl; return <button role="menuitemradio" aria-checked={selected} key={sl} type="button" onClick={() => { setLang(sl); setShowLanguageDropdown(false); setMobileMenuOpen(false); }} className={`w-full min-h-11 text-left px-3 py-2 rounded-xl text-sm font-semibold flex items-center justify-between ${selected ? 'bg-[#0E7C86] text-white' : 'text-slate-700 hover:bg-slate-50'}`}><span>{meta.nativeName}</span><span className="text-xs opacity-75">{meta.label}</span></button>; })}
-                </div>
-              </>}
+              {showLanguageDropdown && (
+                <>
+                  <button type="button" aria-label="Close language menu" className="fixed inset-0 z-40 cursor-default" onClick={() => setShowLanguageDropdown(false)} />
+                  <div role="menu" aria-label={tr('languageSelector', lang)} className="absolute top-full right-0 mt-2 w-56 max-h-[70vh] overflow-y-auto bg-white rounded-2xl shadow-xl border border-slate-200 p-2 z-50">
+                    {PRIMARY_UI_LANGUAGES.map((sl) => {
+                      const meta = LANG_META[sl];
+                      const selected = lang === sl;
+                      return (
+                        <button role="menuitemradio" aria-checked={selected} key={sl} type="button" onClick={() => { setLang(sl); setShowLanguageDropdown(false); setMobileMenuOpen(false); }} className={`w-full min-h-11 text-left px-3 py-2 rounded-xl text-sm font-semibold flex items-center justify-between ${selected ? 'bg-[#0E7C86] text-white' : 'text-slate-700 hover:bg-slate-50'}`}>
+                          <span>{meta.nativeName}</span>
+                          <span className="text-xs opacity-75">{meta.label}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </>
+              )}
             </div>
-            <div className="relative">
-              <button type="button" onClick={() => { setShowMoreRolesDropdown(!showMoreRolesDropdown); setShowLanguageDropdown(false); }} aria-expanded={showMoreRolesDropdown} aria-haspopup="menu" className="hp-header-control"><MoreHorizontal className="w-5 h-5 text-[#0E7C86]" /><span className="hidden sm:inline">{ui('More')}</span><ChevronDown className="w-3 h-3 text-slate-400" /></button>
-              {showMoreRolesDropdown && <>
-                <button type="button" aria-label="Close more menu" className="fixed inset-0 z-40 cursor-default" onClick={() => setShowMoreRolesDropdown(false)} />
-                <div role="menu" aria-label="More options" className="absolute top-full right-0 mt-2 w-64 max-h-[75vh] overflow-y-auto bg-white rounded-2xl shadow-xl border border-slate-200 p-2 z-50">
-                  {loggedInUser && <div className="px-3 py-2 border-b border-slate-100 mb-1"><div className="text-sm font-bold text-slate-900">{loggedInUser.name}</div><div className="text-xs text-slate-500 truncate">{loggedInUser.email}</div></div>}
-                  <button role="menuitem" type="button" onClick={() => { handleNavigateHowItWorks(); setShowMoreRolesDropdown(false); }} className="hp-menu-item">{tr('howItWorks', lang)}</button>
-                  <button role="menuitem" type="button" onClick={() => { setMode('SPLIT_DEMO'); setShowMoreRolesDropdown(false); setMobileMenuOpen(false); }} className="hp-menu-item">{tr('splitScreenMode', lang)}</button>
-                  <button role="menuitem" type="button" onClick={() => { setShowMoreRolesDropdown(false); void handleResetDemo('CLEAN_LOCKED'); }} className="hp-menu-item text-rose-700"><RefreshCw className="w-4 h-4" /> {ui('Reset demo data')}</button>
-                  <div className="px-3 pt-2 pb-1 text-xs font-bold text-slate-400 uppercase">{ui('Other portals')}</div>
-                  {([['PHARMACY', 'Jan Aushadhi Pharmacy'], ['LAB', 'Diagnostic Lab'], ['ADMIN', 'Registry Admin']] as const).map(([portal, label]) => <button role="menuitem" key={portal} type="button" onClick={() => { setMode(portal); setShowMoreRolesDropdown(false); setMobileMenuOpen(false); }} className="hp-menu-item">{label}</button>)}
-                  {!loggedInUser ? <button role="menuitem" type="button" onClick={() => { setShowLoginModal(true); setShowMoreRolesDropdown(false); }} className="hp-menu-item text-[#0E7C86]">{ui('Sign in')}</button> : <button role="menuitem" type="button" onClick={() => { setShowMoreRolesDropdown(false); void handleLogout(); }} className="hp-menu-item text-rose-700">{<LogOut className="w-4 h-4" />} Sign out</button>}
-                </div>
-              </>}
-            </div>
+
+            {/* Account controls */}
+            {!loggedInUser ? (
+              <>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsCreatingAccount(true);
+                    setRegistrationRole('doctor');
+                    handleFillSampleRegistration('doctor');
+                    setShowLoginModal(true);
+                  }}
+                  className="clay-btn-primary px-3 sm:px-4 py-1.5 text-xs font-bold inline-flex items-center gap-1.5 shadow-md hover:scale-105 active:scale-95 transition-all cursor-pointer"
+                  title="Create an account as Doctor, Pharmacist, Diagnostic Lab, or Patient"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">Join Portal /</span>
+                  <span>Create Account</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsCreatingAccount(false);
+                    setShowLoginModal(true);
+                  }}
+                  className="min-h-[36px] px-3 py-1.5 rounded-xl border-2 border-[#0E7C86] bg-white hover:bg-teal-50 text-xs font-bold text-[#0E7C86] transition-colors cursor-pointer inline-flex items-center gap-1"
+                >
+                  <LogIn className="w-3.5 h-3.5" />
+                  <span>{ui('Sign In')}</span>
+                </button>
+              </>
+            ) : (
+              <div className="flex items-center gap-1.5">
+                <span className="hidden sm:inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-teal-50 border border-teal-200 text-xs font-bold text-[#0E7C86]">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                  <span className="capitalize">{loggedInUser.role}</span>: {loggedInUser.name.split(' ')[0]}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => void handleLogout()}
+                  className="min-h-[36px] px-2.5 py-1.5 rounded-xl border border-rose-200 bg-rose-50 hover:bg-rose-100 text-xs font-bold text-rose-700 transition-colors cursor-pointer inline-flex items-center gap-1"
+                  title="Sign out"
+                >
+                  <LogOut className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">Sign out</span>
+                </button>
+              </div>
+            )}
+
+            {/* Mobile Hamburger Button */}
+            <button
+              type="button"
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              className="hp-hamburger lg:hidden"
+              aria-label="Toggle navigation menu"
+              aria-expanded={mobileMenuOpen}
+            >
+              {mobileMenuOpen ? <X className="w-5 h-5 text-slate-700" /> : <Menu className="w-5 h-5 text-slate-700" />}
+            </button>
           </div>
         </div>
-        <nav id="mobile-navigation" aria-label="Primary navigation" className="xl:hidden border-t border-slate-200 bg-white px-3 sm:px-6 py-2">
-          <div className="flex gap-2 overflow-x-auto">
-            {loggedInUser?.role === 'patient' || mode === 'PATIENT' ? <>
-              <button type="button" onClick={() => { setMode('PATIENT'); setPatientTab('HEALTH'); setMobileMenuOpen(false); }} className="hp-mobile-link">{ui('Dashboard')}</button>
-              <button type="button" onClick={() => { setMode('PATIENT'); setPatientTab('REPORTS'); setMobileMenuOpen(false); }} className="hp-mobile-link">{ui('My Health')}</button>
-              <button type="button" onClick={() => { setMode('PATIENT'); setPatientTab('CONSENT'); setMobileMenuOpen(false); }} className="hp-mobile-link">{ui('Access Requests')}</button>
-            </> : loggedInUser?.role === 'doctor' || mode === 'DOCTOR' ? <>
-              <button type="button" onClick={() => { setMode('DOCTOR'); setProviderNavGroup('WORKSPACE'); setMobileMenuOpen(false); }} className="hp-mobile-link">{ui('Dashboard')}</button>
-              <button type="button" onClick={() => { setMode('DOCTOR'); setMobileMenuOpen(false); window.setTimeout(() => document.getElementById('doctor-patient-search')?.focus(), 0); }} className="hp-mobile-link">{ui('Find Patient')}</button>
-              <button type="button" onClick={() => { setMode('DOCTOR'); setMobileMenuOpen(false); window.setTimeout(() => document.getElementById('doctor-access-request')?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 0); }} className="hp-mobile-link">{ui('Access Requests')}</button>
-              <button type="button" onClick={() => { setMode('DOCTOR'); setMobileMenuOpen(false); if (doctorRecord) setShowConsultationModal(true); else window.setTimeout(() => document.getElementById('doctor-access-request')?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 0); }} className="hp-mobile-link">{ui('Consultations')}</button>
-            </> : <>
-              <button type="button" onClick={() => { handleNavigateHome(); }} className="hp-mobile-link">{tr('navHome', lang)}</button>
-              <button type="button" onClick={() => { handleNavigateHowItWorks(); }} className="hp-mobile-link">{tr('howItWorks', lang)}</button>
-            </>}
-            <button type="button" onClick={() => { setMode('PATIENT'); setPatientTab('HEALTH'); }} aria-current={mode === 'PATIENT' ? 'page' : undefined} className={`hp-mobile-link ${mode === 'PATIENT' ? 'hp-nav-active' : ''}`}>{tr('patientPortal', lang)}</button>
-            <button type="button" onClick={() => setMode('DOCTOR')} aria-current={mode === 'DOCTOR' ? 'page' : undefined} className={`hp-mobile-link ${mode === 'DOCTOR' ? 'hp-nav-active' : ''}`}>{tr('doctorPortal', lang)}</button>
-            <button type="button" onClick={() => setMode('EMERGENCY')} aria-current={mode === 'EMERGENCY' ? 'page' : undefined} className="hp-mobile-link hp-mobile-emergency">{tr('navEmergencyRecords', lang)}</button>
-          </div>
-        </nav>
+
+        {/* MOBILE COLLAPSIBLE DRAWER */}
+        <div className={`hp-mobile-drawer ${mobileMenuOpen ? 'open' : ''}`} aria-hidden={!mobileMenuOpen}>
+          <div className="hp-mobile-drawer-backdrop" onClick={() => setMobileMenuOpen(false)} />
+          <aside className="hp-mobile-drawer-panel">
+            <div className="hp-drawer-header">
+              <div className="flex items-center gap-2">
+                <span className="hp-brand-mark w-8 h-8 rounded-lg"><HeartPulse className="w-5 h-5 text-white" /></span>
+                <span className="font-display font-extrabold text-lg text-slate-900">HealthPass</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setMobileMenuOpen(false)}
+                className="p-1.5 rounded-lg text-slate-500 hover:text-slate-800 hover:bg-slate-100 cursor-pointer"
+                aria-label="Close menu"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="flex-1 py-3 overflow-y-auto">
+              <div className="hp-drawer-section-label">Main Navigation</div>
+              <button
+                type="button"
+                onClick={() => { handleNavigateHome(); setMobileMenuOpen(false); }}
+                className={`hp-drawer-link ${mode === 'LANDING' ? 'hp-drawer-active' : ''}`}
+              >
+                <Home className="w-4 h-4 text-[#0E7C86]" />
+                <span>{tr('navHome', lang)}</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => { setMode('PATIENT'); setPatientTab('HEALTH'); setMobileMenuOpen(false); }}
+                className={`hp-drawer-link ${mode === 'PATIENT' ? 'hp-drawer-active' : ''}`}
+              >
+                <HeartPulse className="w-4 h-4 text-[#0E7C86]" />
+                <span>My Health</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => { setMode('DOCTOR'); setDoctorSidebarTab('OVERVIEW'); setMobileMenuOpen(false); }}
+                className={`hp-drawer-link ${mode === 'DOCTOR' ? 'hp-drawer-active' : ''}`}
+              >
+                <Stethoscope className="w-4 h-4 text-[#0E7C86]" />
+                <span>Doctors & Care</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => { setMode('EMERGENCY'); setMobileMenuOpen(false); }}
+                className={`hp-drawer-link hp-drawer-emergency ${mode === 'EMERGENCY' ? 'hp-drawer-active' : ''}`}
+              >
+                <AlertTriangle className="w-4 h-4 text-rose-600" />
+                <span>{tr('navEmergencyRecords', lang)}</span>
+              </button>
+
+              <div className="hp-drawer-divider" />
+              <div className="hp-drawer-section-label">More Services</div>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setMobileMenuOpen(false);
+                  setActivePatientId('pat-2');
+                  setMode('PATIENT');
+                  setPatientTab('HEALTH');
+                  showToast('Family Access: Viewing dependent family profile (Aarav Kumar, 7 yrs).');
+                }}
+                className="hp-drawer-link"
+              >
+                <Users className="w-4 h-4 text-teal-600" />
+                <span>Family Access</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setMobileMenuOpen(false);
+                  showToast('Reminders: 3 active medication and checkup alerts configured.');
+                }}
+                className="hp-drawer-link"
+              >
+                <Bell className="w-4 h-4 text-amber-600" />
+                <span>Reminders</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setMobileMenuOpen(false);
+                  showToast('Health Workers: ASHA & Village Health Worker offline sync enabled.');
+                }}
+                className="hp-drawer-link"
+              >
+                <Hospital className="w-4 h-4 text-emerald-600" />
+                <span>Health Workers</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setMobileMenuOpen(false);
+                  setHighContrast(!highContrast);
+                  showToast(`Help & Settings: High contrast mode ${!highContrast ? 'enabled' : 'disabled'}.`);
+                }}
+                className="hp-drawer-link"
+              >
+                <Shield className="w-4 h-4 text-slate-500" />
+                <span>Help & Settings</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => { handleNavigateHowItWorks(); setMobileMenuOpen(false); }}
+                className={`hp-drawer-link ${mode === 'HOW_IT_WORKS' ? 'hp-drawer-active' : ''}`}
+              >
+                <Info className="w-4 h-4 text-[#0E7C86]" />
+                <span>{tr('howItWorks', lang)}</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => { setMode('SPLIT_DEMO'); setMobileMenuOpen(false); }}
+                className={`hp-drawer-link ${mode === 'SPLIT_DEMO' ? 'hp-drawer-active' : ''}`}
+              >
+                <Columns className="w-4 h-4 text-[#0E7C86]" />
+                <span>{tr('splitScreenMode', lang)}</span>
+              </button>
+
+              <div className="hp-drawer-divider" />
+              <div className="hp-drawer-section-label">Other Portals</div>
+              <button
+                type="button"
+                onClick={() => { setMode('PHARMACY'); setMobileMenuOpen(false); }}
+                className={`hp-drawer-link ${mode === 'PHARMACY' ? 'hp-drawer-active' : ''}`}
+              >
+                <Pill className="w-4 h-4 text-teal-600" />
+                <span>Jan Aushadhi Pharmacy</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => { setMode('LAB'); setMobileMenuOpen(false); }}
+                className={`hp-drawer-link ${mode === 'LAB' ? 'hp-drawer-active' : ''}`}
+              >
+                <FlaskConical className="w-4 h-4 text-indigo-600" />
+                <span>Diagnostic Lab</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => { setMode('ADMIN'); setMobileMenuOpen(false); }}
+                className={`hp-drawer-link ${mode === 'ADMIN' ? 'hp-drawer-active' : ''}`}
+              >
+                <KeyRound className="w-4 h-4 text-slate-600" />
+                <span>Registry Admin</span>
+              </button>
+            </div>
+
+            {/* Bottom Actions inside drawer */}
+            <div className="p-4 border-t border-slate-100 bg-slate-50 space-y-2">
+              {!loggedInUser ? (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMobileMenuOpen(false);
+                      setIsCreatingAccount(true);
+                      setRegistrationRole('doctor');
+                      handleFillSampleRegistration('doctor');
+                      setShowLoginModal(true);
+                    }}
+                    className="w-full clay-btn-primary py-2.5 text-xs font-bold justify-center inline-flex items-center gap-1.5"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>Create Account</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMobileMenuOpen(false);
+                      setIsCreatingAccount(false);
+                      setShowLoginModal(true);
+                    }}
+                    className="w-full min-h-[38px] rounded-xl border border-[#0E7C86] bg-white text-xs font-bold text-[#0E7C86] justify-center inline-flex items-center gap-1.5"
+                  >
+                    <LogIn className="w-3.5 h-3.5" />
+                    <span>{ui('Sign In')}</span>
+                  </button>
+                </>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => { setMobileMenuOpen(false); void handleLogout(); }}
+                  className="w-full min-h-[38px] rounded-xl border border-rose-200 bg-rose-50 text-xs font-bold text-rose-700 justify-center inline-flex items-center gap-1.5"
+                >
+                  <LogOut className="w-3.5 h-3.5" />
+                  <span>Sign out ({loggedInUser.name.split(' ')[0]})</span>
+                </button>
+              )}
+            </div>
+          </aside>
+        </div>
       </header>
+
+      {/* REAL HOSPITAL OPERATIONAL VITALS & EMERGENCY TICKER */}
+      {mode === 'LANDING' && <HospitalVitalsTicker />}
 
       {/* LIVE TOAST NOTIFICATION */}
       {toastMessage && (
@@ -3003,72 +3695,364 @@ export default function App() {
 
       {/* MAIN WORKSPACE CONTENT */}
       <main className="flex-1 max-w-[1440px] w-full mx-auto px-4 sm:px-6 py-6">
-        <div role="note" className="mb-5 flex items-start gap-2.5 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950">
-          <Info className="mt-0.5 h-4 w-4 shrink-0 text-amber-700" />
-          <p><strong>Local-only hackathon demo.</strong> Example records and changes stay in this browser. Sign-in and consent are simulated and are not secure identity verification or backend authorization. Do not enter real medical information.</p>
-        </div>
-        {demoStorageWarning && <div role="alert" className="mb-5 rounded-xl border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-900">{demoStorageWarning}</div>}
         {/* MODE 1: LANDING */}
         {mode === 'LANDING' && (
-          <div className="mx-auto max-w-6xl space-y-14 py-6 sm:py-12">
-            <section className="grid items-center gap-10 lg:grid-cols-2 lg:gap-14">
-              <div className="space-y-6">
-                <div className="inline-flex items-center gap-2 rounded-full border border-teal-200 bg-teal-50 px-3 py-1.5 text-sm font-semibold text-[#0E7C86]">
-                  <HeartPulse className="h-4 w-4" />
-                  <span>Your health information, together</span>
-                </div>
-                <div className="space-y-3">
-                  <h1 className="max-w-xl text-4xl font-extrabold leading-tight tracking-tight text-[#1F2D3D] sm:text-5xl">
-                    Your health record. <span className="text-[#0E7C86]">In your hands.</span>
-                  </h1>
-                  <p className="max-w-xl text-lg leading-relaxed text-[#5B6B7A]">
-                    Keep your medical information in one place. Share it with a doctor when you choose.
+          <div className="mx-auto max-w-6xl space-y-12 py-4 sm:py-8">
+            {/* REAL HOSPITAL 3D HERO SECTION */}
+            <HospitalHeroSection
+              onOpenPatientWallet={() => {
+                setMode('PATIENT');
+                setPatientTab('HEALTH');
+              }}
+              onOpenDoctorPortal={() => {
+                setMode('DOCTOR');
+                setProviderNavGroup('WORKSPACE');
+              }}
+              onOpenEmergencyPortal={() => {
+                setMode('EMERGENCY');
+              }}
+              onOpenPharmacyPortal={() => {
+                setMode('PHARMACY');
+              }}
+              onOpenLabPortal={() => {
+                setMode('LAB');
+              }}
+              onOpenCreateAccount={(role) => {
+                if (role) setRegistrationRole(role);
+                setIsCreatingAccount(true);
+                setShowLoginModal(true);
+              }}
+              onOpenSignIn={() => {
+                setIsCreatingAccount(false);
+                setShowLoginModal(true);
+              }}
+            />
+
+            {/* DIRECT PORTAL NAVIGATION HUB - ALWAYS CLEARLY VISIBLE ON LANDING PAGE */}
+            <section className="relative z-10 space-y-4 rounded-3xl bg-white/95 p-6 sm:p-8 backdrop-blur-xl border border-slate-200/90 shadow-xl">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-100">
+                <div>
+                  <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-teal-50 border border-teal-200 text-[#0E7C86] text-xs font-bold mb-1">
+                    <Sparkles className="w-3.5 h-3.5" />
+                    <span>One-Click Healthcare Portals</span>
+                  </div>
+                  <h2 className="text-xl sm:text-2xl font-extrabold text-slate-900 tracking-tight">
+                    Direct Navigation to HealthPass Portals
+                  </h2>
+                  <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
+                    Select any portal button below to navigate directly into patient records, doctor clinical consultations, pharmacy dispensing, or emergency triage.
                   </p>
                 </div>
-                <div className="flex flex-wrap gap-3 pt-1">
-                  <button
-                    type="button"
-                    onClick={() => { setMode('PATIENT'); setPatientTab('HEALTH'); }}
-                    className="min-h-12 rounded-xl clay-btn-primary px-5 py-3 text-sm font-bold inline-flex items-center gap-2 cursor-pointer"
-                  >
-                    <Smartphone className="h-4 w-4" />
-                    Open my health record
-                    <ArrowRight className="h-4 w-4" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleNavigateHowItWorks}
-                    className="min-h-12 rounded-xl border border-[#DDE7EA] bg-white px-5 py-3 text-sm font-bold text-[#1F2D3D] hover:bg-[#F5F9FA] inline-flex items-center gap-2 cursor-pointer"
-                  >
-                    <Sparkles className="h-4 w-4 text-[#0E7C86]" />
-                    See how it works
-                  </button>
+                <div className="flex items-center gap-2 shrink-0">
+                  {!loggedInUser ? (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsCreatingAccount(true);
+                        setShowLoginModal(true);
+                      }}
+                      className="clay-btn-primary px-4 py-2 text-xs font-bold inline-flex items-center gap-2 cursor-pointer shadow-md hover:scale-105 active:scale-95 transition-transform"
+                    >
+                      <Plus className="w-4 h-4" />
+                      <span>Create Account</span>
+                    </button>
+                  ) : (
+                    <div className="flex items-center gap-2">
+                      <span className="px-3 py-1.5 rounded-xl bg-teal-50 border border-teal-200 text-xs font-bold text-[#0E7C86] flex items-center gap-1.5">
+                        <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                        Signed in: {loggedInUser.name} ({loggedInUser.role})
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => void handleLogout()}
+                        className="px-3 py-1.5 rounded-xl bg-rose-50 border border-rose-200 text-xs font-bold text-rose-700 hover:bg-rose-100 cursor-pointer inline-flex items-center gap-1"
+                      >
+                        <LogOut className="w-3.5 h-3.5" />
+                        <span>Sign Out</span>
+                      </button>
+                    </div>
+                  )}
                 </div>
-                <p className="text-sm text-[#5B6B7A]">You stay in control of when your information is shared.</p>
               </div>
 
-              <div className="relative mx-auto flex min-h-[340px] w-full max-w-lg items-center justify-center overflow-hidden rounded-[2rem] border border-teal-100 bg-gradient-to-br from-[#F0FBFA] via-white to-[#EAF4FC] p-6 sm:min-h-[390px]" aria-label="Animation showing a patient sharing a health record with a doctor">
-                <div className="absolute h-64 w-64 rounded-full bg-teal-100/60 blur-3xl" />
-                <div className="healthpass-orbit absolute h-64 w-64 rounded-full border border-dashed border-teal-300/80 sm:h-72 sm:w-72" />
-                <div className="healthpass-float relative z-10 w-48 rounded-2xl border border-teal-100 bg-white p-4 shadow-xl sm:w-56">
-                  <div className="flex items-center gap-3 border-b border-slate-100 pb-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-teal-50 text-[#0E7C86]"><HeartPulse className="h-5 w-5" /></div>
-                    <div><div className="text-sm font-bold text-[#1F2D3D]">My health record</div><div className="text-xs text-[#5B6B7A]">Saved with me</div></div>
+              {/* Grid of Navigation Buttons for ALL Portals */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 pt-2">
+                {/* 1. Patient Health Wallet */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMode('PATIENT');
+                    setPatientTab('HEALTH');
+                  }}
+                  className="group relative flex flex-col justify-between p-4 rounded-2xl bg-gradient-to-br from-teal-500/10 via-white to-teal-50/40 border-2 border-teal-200 hover:border-[#0E7C86] shadow-sm hover:shadow-lg transition-all text-left cursor-pointer hover:-translate-y-0.5"
+                >
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div className="w-10 h-10 rounded-xl bg-[#0E7C86] text-white flex items-center justify-center shadow-md group-hover:scale-105 transition-transform">
+                        <User className="w-5 h-5" />
+                      </div>
+                      <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-teal-100/70 text-[#0E7C86] border border-teal-200">
+                        Citizen Pass
+                      </span>
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-bold text-slate-900 group-hover:text-[#0E7C86] transition-colors">
+                        Patient Health Wallet
+                      </h3>
+                      <p className="text-xs text-slate-500 line-clamp-2 mt-0.5">
+                        Offline emergency QR, personal health records vault, and instant doctor consent approvals.
+                      </p>
+                    </div>
                   </div>
-                  <div className="mt-3 space-y-2">
-                    <div className="h-2 w-4/5 rounded-full bg-slate-100" />
-                    <div className="h-2 w-3/5 rounded-full bg-slate-100" />
-                    <div className="mt-3 flex items-center gap-2 rounded-lg bg-emerald-50 px-2.5 py-2 text-xs font-semibold text-emerald-800"><Lock className="h-3.5 w-3.5" /> Shared with permission</div>
+                  <div className="mt-3 pt-2.5 border-t border-teal-100/60 flex items-center justify-between text-xs font-bold text-[#0E7C86]">
+                    <span>Open Patient Wallet</span>
+                    <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
                   </div>
-                </div>
-                <div className="healthpass-doctor-float absolute bottom-8 right-5 z-20 rounded-2xl border border-blue-100 bg-white p-3 shadow-lg sm:bottom-10 sm:right-8">
-                  <div className="flex items-center gap-2.5"><div className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-50 text-[#1769AA]"><Stethoscope className="h-4 w-4" /></div><div><div className="text-xs font-bold text-[#1F2D3D]">Your doctor</div><div className="text-[11px] text-[#5B6B7A]">Sees shared details</div></div></div>
-                </div>
-                <div className="healthpass-share absolute left-6 top-9 z-20 flex h-11 w-11 items-center justify-center rounded-full border border-white bg-[#0E7C86] text-white shadow-lg sm:left-10 sm:top-12"><ArrowRight className="h-5 w-5" /></div>
-                <span className="sr-only">Your record stays with you. You choose to share it, and your doctor sees the information you allow.</span>
+                </button>
+
+                {/* 2. Doctor Practice Portal */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMode('DOCTOR');
+                    setProviderNavGroup('WORKSPACE');
+                  }}
+                  className="group relative flex flex-col justify-between p-4 rounded-2xl bg-gradient-to-br from-blue-500/10 via-white to-blue-50/40 border-2 border-blue-200 hover:border-[#1769AA] shadow-sm hover:shadow-lg transition-all text-left cursor-pointer hover:-translate-y-0.5"
+                >
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div className="w-10 h-10 rounded-xl bg-[#1769AA] text-white flex items-center justify-center shadow-md group-hover:scale-105 transition-transform">
+                        <Stethoscope className="w-5 h-5" />
+                      </div>
+                      <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-blue-100/70 text-[#1769AA] border border-blue-200">
+                        Clinician
+                      </span>
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-bold text-slate-900 group-hover:text-[#1769AA] transition-colors">
+                        Doctor Practice Portal
+                      </h3>
+                      <p className="text-xs text-slate-500 line-clamp-2 mt-0.5">
+                        QR patient lookup, allergy safety checks, consultations, and digital e-prescriptions.
+                      </p>
+                    </div>
+                  </div>
+                  <div className="mt-3 pt-2.5 border-t border-blue-100/60 flex items-center justify-between text-xs font-bold text-[#1769AA]">
+                    <span>Open Doctor Clinic</span>
+                    <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                  </div>
+                </button>
+
+                {/* 3. Jan Aushadhi Pharmacy */}
+                <button
+                  type="button"
+                  onClick={() => setMode('PHARMACY')}
+                  className="group relative flex flex-col justify-between p-4 rounded-2xl bg-gradient-to-br from-emerald-500/10 via-white to-emerald-50/40 border-2 border-emerald-200 hover:border-[#1E8E5A] shadow-sm hover:shadow-lg transition-all text-left cursor-pointer hover:-translate-y-0.5"
+                >
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div className="w-10 h-10 rounded-xl bg-[#1E8E5A] text-white flex items-center justify-center shadow-md group-hover:scale-105 transition-transform">
+                        <Pill className="w-5 h-5" />
+                      </div>
+                      <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-emerald-100/70 text-[#1E8E5A] border border-emerald-200">
+                        Generic Dispenser
+                      </span>
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-bold text-slate-900 group-hover:text-[#1E8E5A] transition-colors">
+                        Jan Aushadhi Pharmacy
+                      </h3>
+                      <p className="text-xs text-slate-500 line-clamp-2 mt-0.5">
+                        Prescription QR verification, privacy-preserving view, and generic drug dispensing.
+                      </p>
+                    </div>
+                  </div>
+                  <div className="mt-3 pt-2.5 border-t border-emerald-100/60 flex items-center justify-between text-xs font-bold text-[#1E8E5A]">
+                    <span>Open Pharmacy</span>
+                    <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                  </div>
+                </button>
+
+                {/* 4. Diagnostic Pathology Lab */}
+                <button
+                  type="button"
+                  onClick={() => setMode('LAB')}
+                  className="group relative flex flex-col justify-between p-4 rounded-2xl bg-gradient-to-br from-purple-500/10 via-white to-purple-50/40 border-2 border-purple-200 hover:border-[#7C3AED] shadow-sm hover:shadow-lg transition-all text-left cursor-pointer hover:-translate-y-0.5"
+                >
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div className="w-10 h-10 rounded-xl bg-[#7C3AED] text-white flex items-center justify-center shadow-md group-hover:scale-105 transition-transform">
+                        <FlaskConical className="w-5 h-5" />
+                      </div>
+                      <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-purple-100/70 text-[#7C3AED] border border-purple-200">
+                        NABL Lab
+                      </span>
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-bold text-slate-900 group-hover:text-[#7C3AED] transition-colors">
+                        Diagnostic Pathology Lab
+                      </h3>
+                      <p className="text-xs text-slate-500 line-clamp-2 mt-0.5">
+                        Doctor test orders, pathology report builder, and tamper-evident results upload.
+                      </p>
+                    </div>
+                  </div>
+                  <div className="mt-3 pt-2.5 border-t border-purple-100/60 flex items-center justify-between text-xs font-bold text-[#7C3AED]">
+                    <span>Open Diagnostic Lab</span>
+                    <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                  </div>
+                </button>
+
+                {/* 5. Emergency Trauma Records */}
+                <button
+                  type="button"
+                  onClick={() => setMode('EMERGENCY')}
+                  className="group relative flex flex-col justify-between p-4 rounded-2xl bg-gradient-to-br from-rose-500/10 via-white to-rose-50/40 border-2 border-rose-200 hover:border-rose-600 shadow-sm hover:shadow-lg transition-all text-left cursor-pointer hover:-translate-y-0.5"
+                >
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div className="w-10 h-10 rounded-xl bg-rose-600 text-white flex items-center justify-center shadow-md group-hover:scale-105 transition-transform">
+                        <AlertOctagon className="w-5 h-5" />
+                      </div>
+                      <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-rose-100/70 text-rose-700 border border-rose-200">
+                        Trauma Triage
+                      </span>
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-bold text-slate-900 group-hover:text-rose-600 transition-colors">
+                        Emergency Trauma Records
+                      </h3>
+                      <p className="text-xs text-slate-500 line-clamp-2 mt-0.5">
+                        Trauma triage, anonymous emergency admission, and post-discharge identity linking.
+                      </p>
+                    </div>
+                  </div>
+                  <div className="mt-3 pt-2.5 border-t border-rose-100/60 flex items-center justify-between text-xs font-bold text-rose-600">
+                    <span>Open Emergency Records</span>
+                    <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                  </div>
+                </button>
+
+                {/* 6. Split-Screen Multi-Role Demo */}
+                <button
+                  type="button"
+                  onClick={() => setMode('SPLIT_DEMO')}
+                  className="group relative flex flex-col justify-between p-4 rounded-2xl bg-gradient-to-br from-amber-500/10 via-white to-amber-50/40 border-2 border-amber-200 hover:border-amber-600 shadow-sm hover:shadow-lg transition-all text-left cursor-pointer hover:-translate-y-0.5"
+                >
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div className="w-10 h-10 rounded-xl bg-amber-600 text-white flex items-center justify-center shadow-md group-hover:scale-105 transition-transform">
+                        <Columns className="w-5 h-5" />
+                      </div>
+                      <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-amber-100/70 text-amber-700 border border-amber-200">
+                        Live Simulation
+                      </span>
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-bold text-slate-900 group-hover:text-amber-700 transition-colors">
+                        Split-Screen Multi-Role Demo
+                      </h3>
+                      <p className="text-xs text-slate-500 line-clamp-2 mt-0.5">
+                        Side-by-side live simulation of patient consent grant and doctor clinical examination.
+                      </p>
+                    </div>
+                  </div>
+                  <div className="mt-3 pt-2.5 border-t border-amber-100/60 flex items-center justify-between text-xs font-bold text-amber-700">
+                    <span>Launch Split Demo</span>
+                    <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                  </div>
+                </button>
+
+                {/* 7. How It Works Guide */}
+                <button
+                  type="button"
+                  onClick={handleNavigateHowItWorks}
+                  className="group relative flex flex-col justify-between p-4 rounded-2xl bg-gradient-to-br from-cyan-500/10 via-white to-cyan-50/40 border-2 border-cyan-200 hover:border-cyan-600 shadow-sm hover:shadow-lg transition-all text-left cursor-pointer hover:-translate-y-0.5"
+                >
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div className="w-10 h-10 rounded-xl bg-cyan-700 text-white flex items-center justify-center shadow-md group-hover:scale-105 transition-transform">
+                        <FileText className="w-5 h-5" />
+                      </div>
+                      <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-cyan-100/70 text-cyan-800 border border-cyan-200">
+                        Step-by-Step
+                      </span>
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-bold text-slate-900 group-hover:text-cyan-800 transition-colors">
+                        How It Works Walkthrough
+                      </h3>
+                      <p className="text-xs text-slate-500 line-clamp-2 mt-0.5">
+                        Explore zero-knowledge architecture, cryptographic consent, and FHIR interoperability.
+                      </p>
+                    </div>
+                  </div>
+                  <div className="mt-3 pt-2.5 border-t border-cyan-100/60 flex items-center justify-between text-xs font-bold text-cyan-800">
+                    <span>Explore Guide</span>
+                    <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                  </div>
+                </button>
+
+                {/* 8. Registry Administrator */}
+                <button
+                  type="button"
+                  onClick={() => setMode('ADMIN')}
+                  className="group relative flex flex-col justify-between p-4 rounded-2xl bg-gradient-to-br from-slate-600/10 via-white to-slate-100/50 border-2 border-slate-200 hover:border-slate-800 shadow-sm hover:shadow-lg transition-all text-left cursor-pointer hover:-translate-y-0.5"
+                >
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div className="w-10 h-10 rounded-xl bg-slate-800 text-white flex items-center justify-center shadow-md group-hover:scale-105 transition-transform">
+                        <ShieldCheck className="w-5 h-5" />
+                      </div>
+                      <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-200">
+                        Governance
+                      </span>
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-bold text-slate-900 group-hover:text-slate-800 transition-colors">
+                        Registry Admin Center
+                      </h3>
+                      <p className="text-xs text-slate-500 line-clamp-2 mt-0.5">
+                        Provider licensing accreditation, compliance metrics, and cryptographic audit logs.
+                      </p>
+                    </div>
+                  </div>
+                  <div className="mt-3 pt-2.5 border-t border-slate-100 flex items-center justify-between text-xs font-bold text-slate-700">
+                    <span>Open Admin Center</span>
+                    <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                  </div>
+                </button>
               </div>
             </section>
 
+            {/* HOSPITAL SPECIALIZED CARE DEPARTMENTS & CLINICAL PROTOCOLS */}
+            <HospitalDepartmentsShowcase
+              onSelectDoctorPortal={() => {
+                setMode('DOCTOR');
+                setProviderNavGroup('WORKSPACE');
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+              }}
+              onSelectPatientPortal={() => {
+                setMode('PATIENT');
+                setPatientTab('HEALTH');
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+              }}
+            />
+
+            {/* 3D ECOSYSTEM ROLE SELECTOR SHOWCASE */}
+            <RoleSelect3DShowcase
+              onSelectRole={(role, action) => {
+                setRegistrationRole(role);
+                setIsCreatingAccount(action === 'register');
+                if (action === 'register') {
+                  handleFillSampleRegistration(role);
+                }
+                setShowLoginModal(true);
+              }}
+              onQuickDemoLaunch={(role) => {
+                handleQuickDemoLaunch(role);
+              }}
+            />
           </div>
         )}
         {mode === 'HOW_IT_WORKS' && (
@@ -3145,37 +4129,484 @@ export default function App() {
 
         {/* MODE 3: PATIENT DASHBOARD */}
         {mode === 'PATIENT' && (
-          <div className="mx-auto max-w-6xl space-y-5">
-            <section className="rounded-2xl border border-teal-100 bg-gradient-to-r from-white to-teal-50 p-5 sm:p-6">
-              <div className="flex flex-wrap items-center justify-between gap-4">
-                <div>
-                  <p className="text-sm font-semibold text-[#0E7C86]">{ui('PATIENT')}</p>
-                  <h1 className="mt-1 text-2xl font-bold text-[#1F2D3D]">{ui('Your health dashboard')}</h1>
-                  <p className="mt-1 text-sm text-[#5B6B7A]">{ui('Your records, medicines, and sharing choices in one place.')}</p>
-                </div>
-                <button type="button" onClick={() => setPatientTab('CONSENT')} className="min-h-10 rounded-xl border border-teal-200 bg-white px-4 py-2 text-sm font-bold text-[#0E7C86] hover:bg-teal-50 cursor-pointer inline-flex items-center gap-2">
-                  <ShieldCheck className="h-4 w-4" /> Manage sharing
+          <div className="hp-dashboard-layout">
+            {/* Mobile/Tablet Backdrop for Sidebar */}
+            <div
+              className={`hp-sidebar-backdrop ${sidebarOpen ? 'open' : ''}`}
+              onClick={() => setSidebarOpen(false)}
+            />
+
+            {/* Left Sidebar */}
+            <aside className={`hp-sidebar ${sidebarOpen ? 'hp-sidebar-open' : ''}`} aria-label="Patient Portal Navigation">
+              <div className="hp-sidebar-header flex items-center justify-between">
+                <span className="hp-sidebar-role-badge">
+                  <HeartPulse className="w-3.5 h-3.5" />
+                  <span>Patient Vault</span>
+                </span>
+                <span className="text-[11px] font-mono text-slate-500 truncate max-w-[100px]">
+                  {walletData?.patient?.healthPassId || 'HP-DEMO-0417'}
+                </span>
+              </div>
+
+              <div className="hp-sidebar-section-title">Navigation</div>
+              <div className="hp-sidebar-nav">
+                {/* 1. Overview */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPatientTab('HEALTH');
+                    setPatientProfileEditing(false);
+                    setSidebarOpen(false);
+                  }}
+                  className={`hp-sidebar-item ${patientTab === 'HEALTH' && !patientProfileEditing ? 'hp-sidebar-active' : ''}`}
+                >
+                  <LayoutDashboard className="hp-sidebar-item-icon" />
+                  <span className="truncate">Overview</span>
+                </button>
+
+                {/* 2. My Health Records */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPatientTab('REPORTS');
+                    setSidebarOpen(false);
+                  }}
+                  className={`hp-sidebar-item ${patientTab === 'REPORTS' ? 'hp-sidebar-active' : ''}`}
+                >
+                  <FileText className="hp-sidebar-item-icon" />
+                  <span className="truncate">My Health Records</span>
+                </button>
+
+                {/* 3. Share My Records */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPatientTab('CONSENT');
+                    setSidebarOpen(false);
+                  }}
+                  className={`hp-sidebar-item ${patientTab === 'CONSENT' ? 'hp-sidebar-active' : ''}`}
+                >
+                  <ShieldCheck className="hp-sidebar-item-icon" />
+                  <span className="truncate">Share My Records</span>
+                  {(walletData?.grants?.filter((grant: any) => grant.status === 'PENDING').length || 0) > 0 && (
+                    <span className="hp-sidebar-badge">
+                      {walletData?.grants?.filter((grant: any) => grant.status === 'PENDING').length}
+                    </span>
+                  )}
+                </button>
+
+                {/* 4. Access & Consent */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPatientTab('CONSENT');
+                    setSidebarOpen(false);
+                  }}
+                  className={`hp-sidebar-item ${patientTab === 'CONSENT' ? 'hp-sidebar-active' : ''}`}
+                >
+                  <Lock className="hp-sidebar-item-icon" />
+                  <span className="truncate">Access & Consent</span>
+                </button>
+
+                {/* 5. Access History */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPatientTab('PRIVACY');
+                    setSidebarOpen(false);
+                  }}
+                  className={`hp-sidebar-item ${patientTab === 'PRIVACY' ? 'hp-sidebar-active' : ''}`}
+                >
+                  <Clock className="hp-sidebar-item-icon" />
+                  <span className="truncate">Access History</span>
+                </button>
+
+                {/* 6. My Profile */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPatientTab('HEALTH');
+                    setPatientProfileEditing(true);
+                    setSidebarOpen(false);
+                  }}
+                  className={`hp-sidebar-item ${patientTab === 'HEALTH' && patientProfileEditing ? 'hp-sidebar-active' : ''}`}
+                >
+                  <User className="hp-sidebar-item-icon" />
+                  <span className="truncate">My Profile</span>
                 </button>
               </div>
-              <div className="mt-5 grid gap-3 sm:grid-cols-3">
-                <div className="rounded-xl bg-white/90 p-3"><div className="text-xs text-[#5B6B7A]">{ui('Visits on record')}</div><div className="mt-1 text-xl font-bold text-[#1F2D3D]">{walletData?.record?.visits?.length || 0}</div></div>
-                <div className="rounded-xl bg-white/90 p-3"><div className="text-xs text-[#5B6B7A]">{ui('Current medicines')}</div><div className="mt-1 text-xl font-bold text-[#1F2D3D]">{walletData?.record?.medicines?.filter((medicine: any) => medicine.computedStatus === 'ACTIVE').length || 0}</div></div>
-                <div className="rounded-xl bg-white/90 p-3"><div className="text-xs text-[#5B6B7A]">{ui('Requests to review')}</div><div className="mt-1 text-xl font-bold text-[#1F2D3D]">{walletData?.grants?.filter((grant: any) => grant.status === 'PENDING').length || 0}</div></div>
+
+              <div className="hp-sidebar-divider" />
+              <div className="hp-sidebar-section-title">Additional Tools</div>
+              <div className="hp-sidebar-nav">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPatientTab('MEDICINES');
+                    setSidebarOpen(false);
+                  }}
+                  className={`hp-sidebar-item ${patientTab === 'MEDICINES' ? 'hp-sidebar-active' : ''}`}
+                >
+                  <Pill className="hp-sidebar-item-icon" />
+                  <span className="truncate">Medicines & Prescriptions</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPatientTab('QR');
+                    setSidebarOpen(false);
+                  }}
+                  className={`hp-sidebar-item ${patientTab === 'QR' ? 'hp-sidebar-active' : ''}`}
+                >
+                  <QrCode className="hp-sidebar-item-icon" />
+                  <span className="truncate">Offline QR Pass</span>
+                </button>
               </div>
-            </section>
-            {renderPatientPane(false)}
+
+              {/* Patient switch profile helper */}
+              <div className="mt-auto pt-4 border-t border-slate-100">
+                <div className="text-[10px] uppercase font-bold text-slate-400 px-2 mb-1.5">Switch Patient Profile</div>
+                <div className="space-y-1">
+                  {DEMO_PATIENTS.map((p) => (
+                    <button
+                      key={p.id}
+                      type="button"
+                      onClick={() => {
+                        setActivePatientId(p.id);
+                        fetchPatientWallet(p.id);
+                        showToast(`Switched profile to ${p.name.split(' ')[0]}`);
+                      }}
+                      className={`w-full text-left px-2 py-1.5 rounded-lg text-xs font-semibold flex items-center justify-between ${activePatientId === p.id ? 'bg-teal-50 text-[#0E7C86] font-bold' : 'text-slate-600 hover:bg-slate-50'
+                        }`}
+                    >
+                      <span className="truncate">{p.name.split(' (')[0]}</span>
+                      <span className="text-[10px] font-mono opacity-70">{p.id}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </aside>
+
+            {/* Main Content Area */}
+            <div className="hp-main-pane space-y-5">
+              {/* Mobile Sidebar Open Toggle */}
+              <div className="hp-sidebar-mobile-bar">
+                <button
+                  type="button"
+                  onClick={() => setSidebarOpen(true)}
+                  className="hp-sidebar-mobile-toggle"
+                >
+                  <Menu className="w-4 h-4 text-[#0E7C86]" />
+                  <span>Patient Menu</span>
+                </button>
+                <span className="text-xs font-bold text-slate-700">
+                  {patientTab === 'HEALTH' ? (patientProfileEditing ? 'My Profile' : 'Overview') : patientTab === 'REPORTS' ? 'My Health Records' : patientTab === 'CONSENT' ? 'Share & Consent' : patientTab === 'PRIVACY' ? 'Access History' : patientTab === 'MEDICINES' ? 'Medicines' : 'QR Pass'}
+                </span>
+              </div>
+
+              {/* Standardized Dashboard Header */}
+              <section className="rounded-2xl border border-teal-100 bg-gradient-to-r from-white via-teal-50/40 to-teal-100/30 p-5 sm:p-6 shadow-xs">
+                <div className="flex flex-wrap items-center justify-between gap-4">
+                  <div>
+                    <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-teal-100/80 text-[#0E7C86] text-[11px] font-extrabold uppercase tracking-wider">
+                      <HeartPulse className="w-3.5 h-3.5" />
+                      <span>{ui('PATIENT PORTAL')}</span>
+                    </div>
+                    <h1 className="mt-1 text-2xl font-bold text-[#1F2D3D]">{ui('Your health dashboard')}</h1>
+                    <p className="mt-1 text-sm text-[#5B6B7A]">{ui('Your records, medicines, and sharing choices in one place.')}</p>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => { setPatientTab('REPORTS'); setShowUploadReportForm(true); }}
+                      className="min-h-10 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50 cursor-pointer inline-flex items-center gap-1.5 shadow-xs"
+                    >
+                      <Upload className="w-3.5 h-3.5 text-[#0E7C86]" />
+                      <span>Upload Record</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setPatientTab('CONSENT')}
+                      className="min-h-10 rounded-xl clay-btn-primary px-4 py-2 text-xs font-bold inline-flex items-center gap-1.5 shadow-xs cursor-pointer"
+                    >
+                      <ShieldCheck className="w-4 h-4" />
+                      <span>Manage Sharing</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Summary Cards */}
+                <div className="mt-5 grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setPatientTab('REPORTS')}
+                    className="rounded-xl bg-white/95 p-3.5 border border-teal-100/70 text-left hover:border-teal-300 transition-all cursor-pointer shadow-xs"
+                  >
+                    <div className="flex items-center justify-between text-xs text-[#5B6B7A]">
+                      <span>{ui('Visits & Records')}</span>
+                      <FileText className="w-4 h-4 text-[#0E7C86]" />
+                    </div>
+                    <div className="mt-1.5 text-2xl font-black text-[#1F2D3D]">{walletData?.record?.visits?.length || 0}</div>
+                    <span className="text-[11px] text-[#0E7C86] font-semibold">View records →</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setPatientTab('MEDICINES')}
+                    className="rounded-xl bg-white/95 p-3.5 border border-teal-100/70 text-left hover:border-teal-300 transition-all cursor-pointer shadow-xs"
+                  >
+                    <div className="flex items-center justify-between text-xs text-[#5B6B7A]">
+                      <span>{ui('Active Medicines')}</span>
+                      <Pill className="w-4 h-4 text-emerald-600" />
+                    </div>
+                    <div className="mt-1.5 text-2xl font-black text-[#1F2D3D]">
+                      {walletData?.record?.medicines?.filter((medicine: any) => medicine.computedStatus === 'ACTIVE').length || 0}
+                    </div>
+                    <span className="text-[11px] text-emerald-700 font-semibold">View prescriptions →</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setPatientTab('CONSENT')}
+                    className={`rounded-xl p-3.5 border text-left transition-all cursor-pointer shadow-xs ${(walletData?.grants?.filter((grant: any) => grant.status === 'PENDING').length || 0) > 0
+                      ? 'bg-amber-50/90 border-amber-300 hover:bg-amber-100/70'
+                      : 'bg-white/95 border-teal-100/70 hover:border-teal-300'
+                      }`}
+                  >
+                    <div className="flex items-center justify-between text-xs text-[#5B6B7A]">
+                      <span>{ui('Requests to Review')}</span>
+                      <Bell className={`w-4 h-4 ${(walletData?.grants?.filter((grant: any) => grant.status === 'PENDING').length || 0) > 0 ? 'text-amber-600 animate-bounce' : 'text-[#0E7C86]'}`} />
+                    </div>
+                    <div className="mt-1.5 flex items-baseline gap-2">
+                      <span className="text-2xl font-black text-[#1F2D3D]">
+                        {walletData?.grants?.filter((grant: any) => grant.status === 'PENDING').length || 0}
+                      </span>
+                      {(walletData?.grants?.filter((grant: any) => grant.status === 'PENDING').length || 0) > 0 && (
+                        <span className="px-2 py-0.5 rounded-full bg-amber-200 text-amber-900 text-[10px] font-bold">Action Needed</span>
+                      )}
+                    </div>
+                    <span className="text-[11px] text-[#0E7C86] font-semibold">Respond to consent →</span>
+                  </button>
+                </div>
+              </section>
+
+              {renderPatientPane(false)}
+            </div>
           </div>
         )}
 
         {/* MODE 4: DOCTOR DASHBOARD */}
         {mode === 'DOCTOR' && (
-          <div className="mx-auto max-w-6xl space-y-5">
-            <section className="rounded-2xl border border-blue-100 bg-gradient-to-r from-white to-blue-50 p-5 sm:p-6">
-              <p className="text-sm font-semibold text-[#1769AA]">{ui('CARE TEAM')}</p>
-              <h1 className="mt-1 text-2xl font-bold text-[#1F2D3D]">{ui('Doctor dashboard')}</h1>
-              <p className="mt-1 text-sm text-[#5B6B7A]">{ui('Find a patient, request permission, and review the information shared with you.')}</p>
-            </section>
-            {renderDoctorPane()}
+          <div className="hp-dashboard-layout">
+            {/* Mobile/Tablet Backdrop for Sidebar */}
+            <div
+              className={`hp-sidebar-backdrop ${sidebarOpen ? 'open' : ''}`}
+              onClick={() => setSidebarOpen(false)}
+            />
+
+            {/* Left Sidebar */}
+            <aside className={`hp-sidebar ${sidebarOpen ? 'hp-sidebar-open' : ''}`} aria-label="Doctor Portal Navigation">
+              <div className="hp-sidebar-header flex items-center justify-between">
+                <span className="hp-sidebar-role-badge">
+                  <Stethoscope className="w-3.5 h-3.5" />
+                  <span>Doctor Console</span>
+                </span>
+                <span className="text-[11px] font-bold text-[#0E7C86] bg-teal-50 px-2 py-0.5 rounded-md border border-teal-100">
+                  {currentDoctorObj.facilityLevel}
+                </span>
+              </div>
+
+              <div className="hp-sidebar-section-title">Clinical Workspace</div>
+              <div className="hp-sidebar-nav">
+                {/* 1. Overview */}
+                <button
+                  type="button"
+                  onClick={() => handleDoctorSidebarClick('OVERVIEW')}
+                  className={`hp-sidebar-item ${doctorSidebarTab === 'OVERVIEW' ? 'hp-sidebar-active' : ''}`}
+                >
+                  <LayoutDashboard className="hp-sidebar-item-icon" />
+                  <span className="truncate">Overview</span>
+                </button>
+
+                {/* 2. My Patients */}
+                <button
+                  type="button"
+                  onClick={() => handleDoctorSidebarClick('PATIENTS')}
+                  className={`hp-sidebar-item ${doctorSidebarTab === 'PATIENTS' ? 'hp-sidebar-active' : ''}`}
+                >
+                  <Users className="hp-sidebar-item-icon" />
+                  <span className="truncate">My Patients</span>
+                </button>
+
+                {/* 3. Access Requests */}
+                <button
+                  type="button"
+                  onClick={() => handleDoctorSidebarClick('REQUESTS')}
+                  className={`hp-sidebar-item ${doctorSidebarTab === 'REQUESTS' ? 'hp-sidebar-active' : ''}`}
+                >
+                  <Bell className="hp-sidebar-item-icon" />
+                  <span className="truncate">Access Requests</span>
+                  {authorizedGrantsForDoctor.length > 0 && (
+                    <span className="hp-sidebar-badge">{authorizedGrantsForDoctor.length}</span>
+                  )}
+                </button>
+
+                {/* 4. Patient Records */}
+                <button
+                  type="button"
+                  onClick={() => handleDoctorSidebarClick('RECORDS')}
+                  className={`hp-sidebar-item ${doctorSidebarTab === 'RECORDS' ? 'hp-sidebar-active' : ''}`}
+                >
+                  <FileText className="hp-sidebar-item-icon" />
+                  <span className="truncate">Patient Records</span>
+                </button>
+
+                {/* 5. Consultations & Prescriptions */}
+                <button
+                  type="button"
+                  onClick={() => handleDoctorSidebarClick('CONSULT')}
+                  className={`hp-sidebar-item ${doctorSidebarTab === 'CONSULT' ? 'hp-sidebar-active' : ''}`}
+                >
+                  <Stethoscope className="hp-sidebar-item-icon" />
+                  <span className="truncate">Consultations & Prescriptions</span>
+                </button>
+
+                {/* 6. Access History */}
+                <button
+                  type="button"
+                  onClick={() => handleDoctorSidebarClick('HISTORY')}
+                  className={`hp-sidebar-item ${doctorSidebarTab === 'HISTORY' ? 'hp-sidebar-active' : ''}`}
+                >
+                  <Clock className="hp-sidebar-item-icon" />
+                  <span className="truncate">Access History</span>
+                </button>
+
+                {/* 7. My Profile */}
+                <button
+                  type="button"
+                  onClick={() => handleDoctorSidebarClick('PROFILE')}
+                  className={`hp-sidebar-item ${doctorSidebarTab === 'PROFILE' ? 'hp-sidebar-active' : ''}`}
+                >
+                  <User className="hp-sidebar-item-icon" />
+                  <span className="truncate">My Profile</span>
+                </button>
+              </div>
+
+              {/* Clinic details in sidebar bottom */}
+              <div className="mt-auto pt-3 border-t border-slate-100">
+                <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-200">
+                  <div className="text-[10px] font-extrabold uppercase text-[#0E7C86]">{currentDoctorObj.facilityLevel} Clinic</div>
+                  <div className="text-xs font-bold text-slate-900 truncate">{currentDoctorObj.name}</div>
+                  <div className="text-[11px] text-slate-500 truncate">{currentDoctorObj.facilityName}</div>
+                </div>
+              </div>
+            </aside>
+
+            {/* Main Content Area */}
+            <div className="hp-main-pane space-y-5">
+              {/* Mobile Sidebar Open Toggle */}
+              <div className="hp-sidebar-mobile-bar">
+                <button
+                  type="button"
+                  onClick={() => setSidebarOpen(true)}
+                  className="hp-sidebar-mobile-toggle"
+                >
+                  <Menu className="w-4 h-4 text-[#1769AA]" />
+                  <span>Doctor Menu</span>
+                </button>
+                <span className="text-xs font-bold text-slate-700">
+                  {doctorSidebarTab === 'OVERVIEW' ? 'Overview' : doctorSidebarTab === 'PATIENTS' ? 'My Patients' : doctorSidebarTab === 'REQUESTS' ? 'Access Requests' : doctorSidebarTab === 'RECORDS' ? 'Patient Records' : doctorSidebarTab === 'CONSULT' ? 'Consultations & Rx' : doctorSidebarTab === 'HISTORY' ? 'Access History' : 'Doctor Profile'}
+                </span>
+              </div>
+
+              {/* Standardized Clinical Header */}
+              <section className="rounded-2xl border border-blue-100 bg-gradient-to-r from-white via-blue-50/40 to-blue-100/30 p-5 sm:p-6 shadow-xs">
+                <div className="flex flex-wrap items-center justify-between gap-4">
+                  <div>
+                    <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-blue-100 text-[#1769AA] text-[11px] font-extrabold uppercase tracking-wider">
+                      <Stethoscope className="w-3.5 h-3.5" />
+                      <span>{ui('CARE TEAM')} · {currentDoctorObj.facilityLevel} LEVEL</span>
+                    </div>
+                    <h1 className="mt-1 text-2xl font-bold text-[#1F2D3D]">{ui('Doctor dashboard')}</h1>
+                    <p className="mt-1 text-sm text-[#5B6B7A]">
+                      {currentDoctorObj.name} · {currentDoctorObj.facilityName}
+                    </p>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setShowClinicRegModal(true)}
+                      className="min-h-10 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50 cursor-pointer inline-flex items-center gap-1.5 shadow-xs"
+                    >
+                      <Plus className="w-3.5 h-3.5 text-[#1769AA]" />
+                      <span>Register Clinic</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setShowScannerModal(true)}
+                      className="min-h-10 rounded-xl clay-btn-primary px-4 py-2 text-xs font-bold inline-flex items-center gap-1.5 shadow-xs cursor-pointer"
+                    >
+                      <Camera className="w-4 h-4" />
+                      <span>Scan Patient QR</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Prominent Patient Search Bar in Main Content Area */}
+                <div className="mt-5 p-3.5 rounded-xl bg-white/95 border border-blue-100/80 shadow-xs">
+                  <div className="text-xs font-bold text-[#1F2D3D] mb-2 flex items-center justify-between">
+                    <span className="flex items-center gap-1.5">
+                      <Search className="w-4 h-4 text-[#0E7C86]" />
+                      <span>Patient Search & Point of Care Lookup</span>
+                    </span>
+                    <span className="text-[11px] font-mono text-slate-500">Active Patient: {activePatientId}</span>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <div className="relative flex-1 min-w-[220px]">
+                      <Search className="w-4 h-4 text-[#5B6B7A] absolute left-3.5 top-1/2 -translate-y-1/2" />
+                      <input
+                        id="doctor-dashboard-patient-search"
+                        type="text"
+                        value={doctorLookupQuery}
+                        onChange={(e) => setDoctorLookupQuery(e.target.value)}
+                        onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); void handleDoctorLookup(); } }}
+                        placeholder="Enter patient HealthPass ID (e.g. HP-DEMO-0417)"
+                        className="w-full min-h-[42px] pl-9 pr-3 py-1.5 rounded-xl border border-[#DDE7EA] bg-[#F5F9FA] text-xs font-mono font-bold text-[#1F2D3D]"
+                      />
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleDoctorLookup()}
+                      className="min-h-[42px] px-5 py-2 clay-btn-primary text-xs font-bold cursor-pointer"
+                    >
+                      Find Patient
+                    </button>
+                  </div>
+                </div>
+
+                {/* Prominent Pending Access Requests / Consent Status */}
+                {preConsentIdentity && !doctorRecord && (
+                  <div className="mt-3 p-3.5 rounded-xl bg-amber-50 border-2 border-amber-200 flex flex-wrap items-center justify-between gap-3 animate-in fade-in">
+                    <div>
+                      <div className="text-[11px] font-black uppercase text-amber-800 tracking-wider">Pending Access Request</div>
+                      <div className="text-sm font-bold text-slate-900">{preConsentIdentity.name} · Verified ID: {preConsentIdentity.healthPassId}</div>
+                      <div className="text-xs text-slate-600">Patient identified. Zero clinical records released until consent is granted.</div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleDoctorRequestAccess()}
+                      className="min-h-[38px] px-4 py-1.5 clay-btn-primary text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer"
+                    >
+                      <Lock className="w-3.5 h-3.5" />
+                      <span>Send Consent Request ({requestDurationHours}h)</span>
+                    </button>
+                  </div>
+                )}
+              </section>
+
+              {/* Render Doctor Pane Content */}
+              {renderDoctorPane()}
+            </div>
           </div>
         )}
 
@@ -3209,8 +4640,8 @@ export default function App() {
               </div>
               <p className="text-xs text-[#5B6B7A]">{ui('The request is limited to prescriptions. No allergy, lab, or medical-history access is requested.')}</p>
             </form> : <div className="clay-card flex flex-wrap items-center justify-between gap-3 p-4">
-              <p className="text-sm text-[#5B6B7A]">Sign in with the existing pharmacist demo account to try this workflow.</p>
-              <button type="button" onClick={() => { setLoginEmail('pharmacy@demo.com'); setLoginPassword('Demo@123'); setShowLoginModal(true); }} className="min-h-11 rounded-xl bg-[#0E7C86] px-4 text-sm font-bold text-white hover:bg-[#0A626A]">{ui('Sign in as pharmacist')}</button>
+              <p className="text-sm text-[#5B6B7A]">Sign in with a pharmacy account to access this workflow.</p>
+              <button type="button" onClick={() => { setLoginEmail(''); setLoginPassword(''); setShowLoginModal(true); }} className="min-h-11 rounded-xl bg-[#0E7C86] px-4 text-sm font-bold text-white hover:bg-[#0A626A]">{ui('Sign in as pharmacist')}</button>
             </div>}
             {pharmacyData?.error && <div role="alert" className="rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm font-semibold text-rose-800">{pharmacyData.error}</div>}
             {pharmacyData?.patient && <section className="space-y-4" aria-live="polite">
@@ -3246,69 +4677,82 @@ export default function App() {
               <p className="text-sm text-[#5B6B7A]">{ui('Find the patient by HealthPass ID, then add the result to their records. Looking up an ID does not show you their other health information.')}</p>
             </div>
             {loggedInUser?.role !== 'lab' ? <div role="alert" className="clay-card p-4 text-sm font-semibold text-rose-700">Sign in with a diagnostic lab account to add a report.</div> : <>
-            <form onSubmit={handleLabPatientLookup} className="clay-card p-5 space-y-3">
-              <label htmlFor="lab-patient-id" className="block text-sm font-bold text-[#1F2D3D]">{ui('Patient HealthPass ID')}</label>
-              <div className="flex flex-col gap-2 sm:flex-row">
-                <input id="lab-patient-id" type="text" required value={labHealthPassId} onChange={(e) => { setLabHealthPassId(e.target.value); setLabPatientIdentity(null); setLabAccessStatus('NONE'); }} placeholder="For example, HP-DEMO-0417" autoComplete="off" className="w-full min-h-[44px] px-3 rounded-xl border border-[#DDE7EA] text-sm" />
-                <button type="submit" disabled={labLookupBusy || !labHealthPassId.trim()} className="min-h-[44px] px-5 rounded-xl bg-[#1769AA] text-white text-sm font-bold disabled:opacity-50">{labLookupBusy ? 'Checking…' : 'Find patient'}</button>
-              </div>
-              {labPatientIdentity && <div role="status" className="rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-900"><span className="font-bold">Patient identified:</span> {labPatientIdentity.name} · <span className="font-mono">{labPatientIdentity.healthPassId}</span></div>}
-              {labPatientIdentity && <div className="rounded-xl border border-[#DDE7EA] bg-white p-3 space-y-2">
-                <p className="text-sm font-bold text-[#1F2D3D]">{labAccessStatus === 'PENDING' ? 'Waiting for patient approval' : labAccessStatus === 'GRANTED' ? 'Patient approved laboratory report access' : labAccessStatus === 'DENIED' ? 'Patient declined the request' : labAccessStatus === 'REVOKED' ? 'Patient revoked access' : labAccessStatus === 'EXPIRED' ? 'Patient approval expired' : 'Patient approval is needed before adding a report'}</p>
-                {labAccessStatus === 'PENDING' ? <p className="text-xs text-[#5B6B7A]">The request appears in the patient’s Access Requests. This screen checks for their decision automatically.</p> : labAccessStatus === 'GRANTED' ? <p className="text-xs text-[#5B6B7A]">Approval is limited to Laboratory Reports and expires {labPatientIdentity.grant?.expiresAt ? new Date(labPatientIdentity.grant.expiresAt).toLocaleString() : 'according to the consent period'}.</p> : <button type="button" onClick={handleLabRequestAccess} disabled={labLookupBusy} className="min-h-[42px] rounded-xl bg-[#1769AA] px-4 py-2 text-sm font-bold text-white disabled:opacity-50">{labLookupBusy ? 'Sending…' : 'Request patient approval'}</button>}
-              </div>}
-            </form>
-            <form
-              onSubmit={handleLabReportSubmit}
-              className={`clay-card p-5 space-y-4 ${!labPatientIdentity || labAccessStatus !== 'GRANTED' ? 'opacity-60' : ''}`}
-            >
-              <div>
-                <label htmlFor="lab-test-name" className="block text-sm font-bold text-[#1F2D3D] mb-1">
-                  Test Name
-                </label>
-                <input
-                  id="lab-test-name"
-                  type="text"
-                  required
-                  maxLength={160}
-                  value={labTestName}
-                  onChange={(e) => setLabTestName(e.target.value)}
-                  disabled={!labPatientIdentity || labAccessStatus !== 'GRANTED' || labSaveBusy}
-                  className="w-full min-h-[44px] px-3 py-1.5 rounded-xl border border-[#DDE7EA] text-sm disabled:bg-slate-50"
-                />
-              </div>
-              <div>
-                <label htmlFor="lab-result-summary" className="block text-sm font-bold text-[#1F2D3D] mb-1">
-                  Result Summary
-                </label>
-                <textarea
-                  id="lab-result-summary"
-                  required
-                  maxLength={4000}
-                  value={labResultSummary}
-                  onChange={(e) => setLabResultSummary(e.target.value)}
-                  disabled={!labPatientIdentity || labAccessStatus !== 'GRANTED' || labSaveBusy}
-                  rows={4}
-                  className="w-full min-h-[100px] px-3 py-2 rounded-xl border border-[#DDE7EA] text-sm font-mono disabled:bg-slate-50"
-                />
-              </div>
-              <div>
-                <label htmlFor="lab-report-date" className="block text-sm font-bold text-[#1F2D3D] mb-1">Report date</label>
-                <input id="lab-report-date" type="date" required value={labReportDate} onChange={(e) => setLabReportDate(e.target.value)} disabled={!labPatientIdentity || labAccessStatus !== 'GRANTED' || labSaveBusy} className="w-full min-h-[44px] px-3 py-1.5 rounded-xl border border-[#DDE7EA] text-sm disabled:bg-slate-50" />
-              </div>
-              <button
-                type="submit"
-                disabled={!labPatientIdentity || labAccessStatus !== 'GRANTED' || labSaveBusy || !labTestName.trim() || !labResultSummary.trim()}
-                className="min-h-[44px] px-5 py-2.5 clay-btn-primary text-sm font-bold cursor-pointer disabled:opacity-50"
+              <form onSubmit={handleLabPatientLookup} className="clay-card p-5 space-y-3">
+                <label htmlFor="lab-patient-id" className="block text-sm font-bold text-[#1F2D3D]">{ui('Patient HealthPass ID')}</label>
+                <div className="flex flex-col gap-2 sm:flex-row">
+                  <input id="lab-patient-id" type="text" required value={labHealthPassId} onChange={(e) => { setLabHealthPassId(e.target.value); setLabPatientIdentity(null); setLabAccessStatus('NONE'); }} placeholder="For example, HP-DEMO-0417" autoComplete="off" className="w-full min-h-[44px] px-3 rounded-xl border border-[#DDE7EA] text-sm" />
+                  <button type="submit" disabled={labLookupBusy || !labHealthPassId.trim()} className="min-h-[44px] px-5 rounded-xl bg-[#1769AA] text-white text-sm font-bold disabled:opacity-50">{labLookupBusy ? 'Checking…' : 'Find patient'}</button>
+                </div>
+                {labPatientIdentity && <div role="status" className="rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-900"><span className="font-bold">Patient identified:</span> {labPatientIdentity.name} · <span className="font-mono">{labPatientIdentity.healthPassId}</span></div>}
+                {labPatientIdentity && <div className="rounded-xl border border-[#DDE7EA] bg-white p-3 space-y-2">
+                  <p className="text-sm font-bold text-[#1F2D3D]">{labAccessStatus === 'PENDING' ? 'Waiting for patient approval' : labAccessStatus === 'GRANTED' ? 'Patient approved laboratory report access' : labAccessStatus === 'DENIED' ? 'Patient declined the request' : labAccessStatus === 'REVOKED' ? 'Patient revoked access' : labAccessStatus === 'EXPIRED' ? 'Patient approval expired' : 'Patient approval is needed before adding a report'}</p>
+                  {labAccessStatus === 'PENDING' ? <p className="text-xs text-[#5B6B7A]">The request appears in the patient’s Access Requests. This screen checks for their decision automatically.</p> : labAccessStatus === 'GRANTED' ? <p className="text-xs text-[#5B6B7A]">Approval is limited to Laboratory Reports and expires {labPatientIdentity.grant?.expiresAt ? new Date(labPatientIdentity.grant.expiresAt).toLocaleString() : 'according to the consent period'}.</p> : <button type="button" onClick={handleLabRequestAccess} disabled={labLookupBusy} className="min-h-[42px] rounded-xl bg-[#1769AA] px-4 py-2 text-sm font-bold text-white disabled:opacity-50">{labLookupBusy ? 'Sending…' : 'Request patient approval'}</button>}
+                </div>}
+              </form>
+              <form
+                onSubmit={handleLabReportSubmit}
+                className={`clay-card p-5 space-y-4 ${!labPatientIdentity || labAccessStatus !== 'GRANTED' ? 'opacity-60' : ''}`}
               >
-                {labSaveBusy ? 'Saving…' : 'Save test result'}
-              </button>
-            </form>
+                <div>
+                  <label htmlFor="lab-test-name" className="block text-sm font-bold text-[#1F2D3D] mb-1">
+                    Test Name
+                  </label>
+                  <input
+                    id="lab-test-name"
+                    type="text"
+                    required
+                    maxLength={160}
+                    value={labTestName}
+                    onChange={(e) => setLabTestName(e.target.value)}
+                    disabled={!labPatientIdentity || labAccessStatus !== 'GRANTED' || labSaveBusy}
+                    className="w-full min-h-[44px] px-3 py-1.5 rounded-xl border border-[#DDE7EA] text-sm disabled:bg-slate-50"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="lab-result-summary" className="block text-sm font-bold text-[#1F2D3D] mb-1">
+                    Result Summary
+                  </label>
+                  <textarea
+                    id="lab-result-summary"
+                    required
+                    maxLength={4000}
+                    value={labResultSummary}
+                    onChange={(e) => setLabResultSummary(e.target.value)}
+                    disabled={!labPatientIdentity || labAccessStatus !== 'GRANTED' || labSaveBusy}
+                    rows={4}
+                    className="w-full min-h-[100px] px-3 py-2 rounded-xl border border-[#DDE7EA] text-sm font-mono disabled:bg-slate-50"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="lab-report-date" className="block text-sm font-bold text-[#1F2D3D] mb-1">Report date</label>
+                  <input id="lab-report-date" type="date" required value={labReportDate} onChange={(e) => setLabReportDate(e.target.value)} disabled={!labPatientIdentity || labAccessStatus !== 'GRANTED' || labSaveBusy} className="w-full min-h-[44px] px-3 py-1.5 rounded-xl border border-[#DDE7EA] text-sm disabled:bg-slate-50" />
+                </div>
+                <button
+                  type="submit"
+                  disabled={!labPatientIdentity || labAccessStatus !== 'GRANTED' || labSaveBusy || !labTestName.trim() || !labResultSummary.trim()}
+                  className="min-h-[44px] px-5 py-2.5 clay-btn-primary text-sm font-bold cursor-pointer disabled:opacity-50"
+                >
+                  {labSaveBusy ? 'Saving…' : 'Save test result'}
+                </button>
+              </form>
             </>}
           </div>
         )}
 
-        {/* MODE 7: ADMIN */}
+        {/* MODE 7: CAREGIVER ASSISTED ACCESS */}
+        {mode === 'CAREGIVER' && (
+          <div className="max-w-5xl mx-auto">
+            <CaregiverWorkspace
+              language={lang as 'EN' | 'TE' | 'HI'}
+              onUploadAssistedRecord={(patId) => {
+                if (patId) setActivePatientId(patId);
+                setShowPatientOcrModal(true);
+              }}
+            />
+          </div>
+        )}
+
+        {/* MODE 8: ADMIN */}
         {mode === 'ADMIN' && (
           <div className="max-w-4xl mx-auto space-y-5">
             <div className="clay-card p-5 space-y-2">
@@ -3349,30 +4793,473 @@ export default function App() {
           MODALS
       ==================================================================== */}
       {showLoginModal && (
-        <div className="fixed inset-0 z-50 bg-black/55 flex items-center justify-center p-4">
-          <div className="clay-card max-w-md w-full max-h-[90vh] overflow-y-auto p-6 space-y-4">
-            <div className="flex items-center justify-between">
-              <h3 className="text-lg font-bold text-[#1F2D3D]">Sign In to HealthPass</h3>
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
+          <div className="clay-card max-w-lg w-full max-h-[92vh] overflow-y-auto p-6 space-y-4 my-auto border border-[#0E7C86]/30 shadow-2xl">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <span className="text-xs font-bold text-[#0E7C86] uppercase tracking-wider">
+                  {isCreatingAccount ? 'HealthPass Unified Network' : 'Secure Authentication'}
+                </span>
+                <h3 className="text-xl font-bold text-[#1F2D3D]">
+                  {isCreatingAccount ? 'Create Your Account' : 'Sign In to HealthPass'}
+                </h3>
+                <p className="text-xs text-[#5B6B7A] mt-0.5">
+                  {isCreatingAccount
+                    ? 'Select your role across the healthcare network to get started.'
+                    : 'Access your health wallet, clinical point of care, pharmacy, or diagnostic lab.'}
+                </p>
+              </div>
               <button
                 type="button"
                 onClick={() => setShowLoginModal(false)}
-                className="text-[#5B6B7A] hover:text-[#1F2D3D] cursor-pointer"
+                className="text-[#5B6B7A] hover:text-[#1F2D3D] p-1 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer shrink-0"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            {loginError && (
-              <div className="p-3 rounded-xl bg-[#FEF2F2] border border-[#D32F2F] text-xs font-bold text-[#D32F2F]">
-                {loginError}
+            {/* 3D Interactive Role Emblem Preview */}
+            {isCreatingAccount && (
+              <div className="flex items-center gap-3 p-3 rounded-2xl bg-gradient-to-r from-teal-50/80 via-white to-sky-50/80 border border-teal-100 shadow-xs">
+                <div className="w-[84px] h-[84px] shrink-0 flex items-center justify-center rounded-xl bg-white border border-teal-200/80 shadow-sm overflow-hidden">
+                  <ThreeRoleCanvas role={registrationRole} size={80} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <span className="text-[10px] font-black uppercase tracking-wider text-[#0E7C86]">
+                    Interactive 3D Portal Selection
+                  </span>
+                  <h4 className="text-sm font-bold text-slate-800 capitalize">
+                    {registrationRole === 'patient'
+                      ? 'Patient HealthPass Wallet'
+                      : registrationRole === 'doctor'
+                        ? 'Doctor Practice & Consultation Portal'
+                        : registrationRole === 'pharmacy'
+                          ? 'Jan Aushadhi Generic Pharmacy'
+                          : 'NABL Diagnostic Pathology Lab'}
+                  </h4>
+                  <p className="text-[11px] text-slate-500 line-clamp-2">
+                    {registrationRole === 'patient'
+                      ? 'Instant health wallet, lifetime record pass & consent approvals.'
+                      : registrationRole === 'doctor'
+                        ? 'Clinical practice workbench, allergy alerts & generic e-prescriptions.'
+                        : registrationRole === 'pharmacy'
+                          ? 'Prescription QR scanning & Jan Aushadhi generic substitution.'
+                          : 'Authorized diagnostic test reception & direct lab report delivery.'}
+                  </p>
+                </div>
               </div>
             )}
 
-            <form onSubmit={handleLoginSubmit} className="space-y-3">
-              {isCreatingAccount && <div>
-                <label className="block text-xs font-bold text-[#1F2D3D] mb-1">{ui('Your name')}</label>
-                <input type="text" required maxLength={200} value={registrationName} onChange={(e) => setRegistrationName(e.target.value)} className="w-full min-h-[42px] px-3 py-1.5 rounded-xl border border-[#DDE7EA] text-sm" />
-              </div>}
+            {loginError && (
+              <div className="p-3 rounded-xl bg-[#FEF2F2] border border-[#D32F2F] text-xs font-bold text-[#D32F2F] flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4 shrink-0" />
+                <span>{loginError}</span>
+              </div>
+            )}
+
+            <form onSubmit={handleLoginSubmit} className="space-y-4">
+              {isCreatingAccount && (
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <label className="block text-xs font-bold text-[#1F2D3D]">
+                      {ui('Select Your Role')} <span className="text-[#0E7C86] font-normal">· Instant portal access</span>
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => handleFillSampleRegistration(registrationRole)}
+                      className="px-2 py-0.5 rounded-lg bg-teal-50 hover:bg-teal-100 text-[#0E7C86] text-[10px] font-bold border border-teal-200 transition-colors inline-flex items-center gap-1 cursor-pointer"
+                    >
+                      <Sparkles className="w-3 h-3 text-amber-500" />
+                      <span>Fill Sample Data</span>
+                    </button>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setRegistrationRole('patient');
+                        handleFillSampleRegistration('patient');
+                      }}
+                      className={`p-3 rounded-2xl border text-left flex items-start gap-2.5 transition-all cursor-pointer ${registrationRole === 'patient'
+                        ? 'border-[#0E7C86] bg-[#0E7C86]/10 shadow-md ring-2 ring-[#0E7C86]'
+                        : 'border-[#DDE7EA] bg-[#F5F9FA] hover:bg-white'
+                        }`}
+                    >
+                      <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${registrationRole === 'patient' ? 'bg-[#0E7C86] text-white shadow-sm' : 'bg-white text-[#5B6B7A] border border-[#DDE7EA]'
+                        }`}>
+                        <User className="w-5 h-5" />
+                      </div>
+                      <div className="min-w-0">
+                        <div className="text-xs font-bold text-[#1F2D3D]">{ui('Patient')}</div>
+                        <div className="text-[11px] text-[#5B6B7A] leading-tight">Health Wallet & QR</div>
+                      </div>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setRegistrationRole('doctor');
+                        handleFillSampleRegistration('doctor');
+                      }}
+                      className={`p-3 rounded-2xl border text-left flex items-start gap-2.5 transition-all cursor-pointer ${registrationRole === 'doctor'
+                        ? 'border-[#1769AA] bg-[#1769AA]/10 shadow-md ring-2 ring-[#1769AA]'
+                        : 'border-[#DDE7EA] bg-[#F5F9FA] hover:bg-white'
+                        }`}
+                    >
+                      <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${registrationRole === 'doctor' ? 'bg-[#1769AA] text-white shadow-sm' : 'bg-white text-[#5B6B7A] border border-[#DDE7EA]'
+                        }`}>
+                        <Stethoscope className="w-5 h-5" />
+                      </div>
+                      <div className="min-w-0">
+                        <div className="text-xs font-bold text-[#1F2D3D]">{ui('Doctor')}</div>
+                        <div className="text-[11px] text-[#5B6B7A] leading-tight">Point of Care & Rx</div>
+                      </div>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setRegistrationRole('pharmacy');
+                        handleFillSampleRegistration('pharmacy');
+                      }}
+                      className={`p-3 rounded-2xl border text-left flex items-start gap-2.5 transition-all cursor-pointer ${registrationRole === 'pharmacy'
+                        ? 'border-[#1E8E5A] bg-[#1E8E5A]/10 shadow-md ring-2 ring-[#1E8E5A]'
+                        : 'border-[#DDE7EA] bg-[#F5F9FA] hover:bg-white'
+                        }`}
+                    >
+                      <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${registrationRole === 'pharmacy' ? 'bg-[#1E8E5A] text-white shadow-sm' : 'bg-white text-[#5B6B7A] border border-[#DDE7EA]'
+                        }`}>
+                        <Pill className="w-5 h-5" />
+                      </div>
+                      <div className="min-w-0">
+                        <div className="text-xs font-bold text-[#1F2D3D]">{ui('Pharmacist')}</div>
+                        <div className="text-[11px] text-[#5B6B7A] leading-tight">Jan Aushadhi Dispense</div>
+                      </div>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setRegistrationRole('lab');
+                        handleFillSampleRegistration('lab');
+                      }}
+                      className={`p-3 rounded-2xl border text-left flex items-start gap-2.5 transition-all cursor-pointer ${registrationRole === 'lab'
+                        ? 'border-[#7C3AED] bg-[#7C3AED]/10 shadow-md ring-2 ring-[#7C3AED]'
+                        : 'border-[#DDE7EA] bg-[#F5F9FA] hover:bg-white'
+                        }`}
+                    >
+                      <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${registrationRole === 'lab' ? 'bg-[#7C3AED] text-white shadow-sm' : 'bg-white text-[#5B6B7A] border border-[#DDE7EA]'
+                        }`}>
+                        <FlaskConical className="w-5 h-5" />
+                      </div>
+                      <div className="min-w-0">
+                        <div className="text-xs font-bold text-[#1F2D3D]">{ui('Diagnostic Lab')}</div>
+                        <div className="text-[11px] text-[#5B6B7A] leading-tight">NABL Pathology & Reports</div>
+                      </div>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setRegistrationRole('caregiver');
+                        handleFillSampleRegistration('caregiver');
+                      }}
+                      className={`col-span-2 p-3 rounded-2xl border text-left flex items-start gap-2.5 transition-all cursor-pointer ${registrationRole === 'caregiver'
+                        ? 'border-[#4F46E5] bg-[#4F46E5]/10 shadow-md ring-2 ring-[#4F46E5]'
+                        : 'border-[#DDE7EA] bg-[#F5F9FA] hover:bg-white'
+                        }`}
+                    >
+                      <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${registrationRole === 'caregiver' ? 'bg-[#4F46E5] text-white shadow-sm' : 'bg-white text-[#5B6B7A] border border-[#DDE7EA]'
+                        }`}>
+                        <Users className="w-5 h-5" />
+                      </div>
+                      <div className="min-w-0">
+                        <div className="text-xs font-bold text-[#1F2D3D]">Caregiver · Assisted Access</div>
+                        <div className="text-[11px] text-[#5B6B7A] leading-tight">Support elderly or dependent family members with medicine schedules & uploads</div>
+                      </div>
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {isCreatingAccount && (
+                <div>
+                  <label className="block text-xs font-bold text-[#1F2D3D] mb-1">
+                    {registrationRole === 'doctor'
+                      ? "Doctor's Full Name"
+                      : registrationRole === 'pharmacy'
+                        ? 'Pharmacist-in-Charge Name'
+                        : registrationRole === 'lab'
+                          ? 'Lab Director / Pathologist Name'
+                          : ui('Your full name')}
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    maxLength={200}
+                    value={registrationName}
+                    onChange={(e) => setRegistrationName(e.target.value)}
+                    placeholder={
+                      registrationRole === 'doctor'
+                        ? 'e.g. Dr. Priya Sharma, MBBS, MD'
+                        : registrationRole === 'pharmacy'
+                          ? 'e.g. Rajesh Verma, B.Pharm'
+                          : registrationRole === 'lab'
+                            ? 'e.g. Dr. Sunita Patil, MD Path'
+                            : 'e.g. Ananya Rao'
+                    }
+                    className="w-full min-h-[42px] px-3 py-1.5 rounded-xl border border-[#DDE7EA] text-sm focus:border-[#0E7C86] focus:ring-1 focus:ring-[#0E7C86] bg-white"
+                  />
+                </div>
+              )}
+
+              {/* Role-specific dynamic fields */}
+              {isCreatingAccount && registrationRole === 'patient' && (
+                <div className="grid grid-cols-3 gap-2">
+                  <div>
+                    <label className="block text-xs font-bold text-[#1F2D3D] mb-1">{ui('Age')}</label>
+                    <input
+                      type="number"
+                      required
+                      min={0}
+                      max={125}
+                      value={registrationAge}
+                      onChange={(e) => setRegistrationAge(e.target.value)}
+                      className="w-full min-h-[42px] px-3 py-1.5 rounded-xl border border-[#DDE7EA] text-xs font-mono bg-white"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-[#1F2D3D] mb-1">{ui('Gender')}</label>
+                    <select
+                      value={registrationGender}
+                      onChange={(e) => setRegistrationGender(e.target.value)}
+                      className="w-full min-h-[42px] px-2 py-1.5 rounded-xl border border-[#DDE7EA] text-xs bg-white"
+                    >
+                      <option value="Female">Female</option>
+                      <option value="Male">Male</option>
+                      <option value="Non-binary">Non-binary</option>
+                      <option value="Other">Other</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-[#1F2D3D] mb-1">{ui('Blood Group')}</label>
+                    <select
+                      value={registrationBloodGroup}
+                      onChange={(e) => setRegistrationBloodGroup(e.target.value)}
+                      className="w-full min-h-[42px] px-2 py-1.5 rounded-xl border border-[#DDE7EA] text-xs font-bold bg-white"
+                    >
+                      {['O+', 'O-', 'A+', 'A-', 'B+', 'B-', 'AB+', 'AB-'].map((bg) => (
+                        <option key={bg} value={bg}>{bg}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              )}
+
+              {isCreatingAccount && registrationRole === 'patient' && (
+                <div>
+                  <label className="block text-xs font-bold text-[#1F2D3D] mb-1">{ui('Date of birth')}</label>
+                  <input
+                    type="date"
+                    required
+                    value={registrationDateOfBirth}
+                    onChange={(e) => setRegistrationDateOfBirth(e.target.value)}
+                    max={new Date().toISOString().slice(0, 10)}
+                    className="w-full min-h-[42px] px-3 py-1.5 rounded-xl border border-[#DDE7EA] text-xs bg-white"
+                  />
+                  <p className="mt-1 text-[11px] text-[#5B6B7A]">
+                    {ui('Required for emergency identity verification. It is never shown to providers without your consent.')}
+                  </p>
+                </div>
+              )}
+
+              {isCreatingAccount && registrationRole === 'doctor' && (
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-xs font-bold text-[#1F2D3D] mb-1">Clinic / Hospital / Health Center Name</label>
+                    <input
+                      type="text"
+                      required
+                      value={registrationFacilityName}
+                      onChange={(e) => setRegistrationFacilityName(e.target.value)}
+                      placeholder="e.g. Kothapalli Primary Health Centre"
+                      className="w-full min-h-[42px] px-3 py-1.5 rounded-xl border border-[#DDE7EA] text-xs bg-white"
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="block text-xs font-bold text-[#1F2D3D] mb-1">Facility Tier</label>
+                      <select
+                        value={registrationFacilityLevel}
+                        onChange={(e) => setRegistrationFacilityLevel(e.target.value as FacilityLevel)}
+                        className="w-full min-h-[42px] px-2 py-1.5 rounded-xl border border-[#DDE7EA] text-xs bg-white"
+                      >
+                        <option value="VILLAGE">Village Health Post (Primary)</option>
+                        <option value="MANDAL">Community Health Center (Mandal)</option>
+                        <option value="DISTRICT">District Hospital (District)</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-[#1F2D3D] mb-1">Medical Registration No.</label>
+                      <input
+                        type="text"
+                        required
+                        value={registrationLicenseNumber}
+                        onChange={(e) => setRegistrationLicenseNumber(e.target.value)}
+                        placeholder="e.g. MCI-2026-8942"
+                        className="w-full min-h-[42px] px-3 py-1.5 rounded-xl border border-[#DDE7EA] text-xs font-mono bg-white"
+                      />
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 p-2.5 rounded-xl bg-teal-50 border border-teal-200 text-[11px] text-teal-800 font-semibold">
+                    <ShieldCheck className="w-4 h-4 text-[#0E7C86] shrink-0" />
+                    <span>Accredited Clinical Practitioner · Instant consultation portal access granted.</span>
+                  </div>
+                </div>
+              )}
+
+              {isCreatingAccount && registrationRole === 'pharmacy' && (
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-xs font-bold text-[#1F2D3D] mb-1">Pharmacy / Medical Store Name</label>
+                    <input
+                      type="text"
+                      required
+                      value={registrationFacilityName}
+                      onChange={(e) => setRegistrationFacilityName(e.target.value)}
+                      placeholder="e.g. Pradhan Mantri Jan Aushadhi Kendra #1042"
+                      className="w-full min-h-[42px] px-3 py-1.5 rounded-xl border border-[#DDE7EA] text-xs bg-white"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-[#1F2D3D] mb-1">Drug License / Pharmacy Registration ID</label>
+                    <input
+                      type="text"
+                      required
+                      value={registrationLicenseNumber}
+                      onChange={(e) => setRegistrationLicenseNumber(e.target.value)}
+                      placeholder="e.g. 20-B/21-B MH-8941"
+                      className="w-full min-h-[42px] px-3 py-1.5 rounded-xl border border-[#DDE7EA] text-xs font-mono bg-white"
+                    />
+                  </div>
+                  <div className="flex items-center gap-2 p-2.5 rounded-xl bg-emerald-50 border border-emerald-200 text-[11px] text-emerald-800 font-semibold">
+                    <ShieldCheck className="w-4 h-4 text-[#1E8E5A] shrink-0" />
+                    <span>Authorized Generic Medicine Dispenser · Full access to patient QR prescription lookups.</span>
+                  </div>
+                </div>
+              )}
+
+              {isCreatingAccount && registrationRole === 'lab' && (
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-xs font-bold text-[#1F2D3D] mb-1">Diagnostic Laboratory / Center Name</label>
+                    <input
+                      type="text"
+                      required
+                      value={registrationFacilityName}
+                      onChange={(e) => setRegistrationFacilityName(e.target.value)}
+                      placeholder="e.g. Apex Diagnostics & Pathology Laboratory"
+                      className="w-full min-h-[42px] px-3 py-1.5 rounded-xl border border-[#DDE7EA] text-xs bg-white"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-[#1F2D3D] mb-1">NABL / Regulatory Accreditation ID</label>
+                    <input
+                      type="text"
+                      required
+                      value={registrationLicenseNumber}
+                      onChange={(e) => setRegistrationLicenseNumber(e.target.value)}
+                      placeholder="e.g. NABL-MC-2026-081"
+                      className="w-full min-h-[42px] px-3 py-1.5 rounded-xl border border-[#DDE7EA] text-xs font-mono bg-white"
+                    />
+                  </div>
+                  <div className="flex items-center gap-2 p-2.5 rounded-xl bg-purple-50 border border-purple-200 text-[11px] text-purple-800 font-semibold">
+                    <ShieldCheck className="w-4 h-4 text-[#7C3AED] shrink-0" />
+                    <span>NABL Accredited Diagnostic Center · Direct digital upload to patient HealthPass.</span>
+                  </div>
+                </div>
+              )}
+
+              {!isCreatingAccount && (
+                <div className="space-y-2 p-3 bg-slate-50 border border-slate-200/80 rounded-2xl">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] font-bold text-slate-700 flex items-center gap-1.5">
+                      <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+                      <span>{ui('Quick Demo Accounts')}</span>
+                    </span>
+                    <span className="text-[10px] text-slate-400 font-medium">Click to fill</span>
+                  </div>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setLoginEmail('ananya.rao@healthpass.org');
+                        setLoginPassword('Patient@2026');
+                      }}
+                      className="px-2.5 py-1.5 text-left rounded-xl bg-white hover:bg-teal-50 border border-slate-200 hover:border-teal-300 transition-all cursor-pointer shadow-2xs"
+                    >
+                      <div className="text-[11px] font-bold text-slate-800">Patient</div>
+                      <div className="text-[9px] text-slate-500 truncate">Ananya Rao</div>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setLoginEmail('dr.priya@apollohealth.org');
+                        setLoginPassword('Doctor@2026');
+                      }}
+                      className="px-2.5 py-1.5 text-left rounded-xl bg-white hover:bg-sky-50 border border-slate-200 hover:border-sky-300 transition-all cursor-pointer shadow-2xs"
+                    >
+                      <div className="text-[11px] font-bold text-slate-800">Doctor</div>
+                      <div className="text-[9px] text-slate-500 truncate">Dr. Priya Sharma</div>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setLoginEmail('rajesh.pharmacy@janaushadhi.gov');
+                        setLoginPassword('Pharma@2026');
+                      }}
+                      className="px-2.5 py-1.5 text-left rounded-xl bg-white hover:bg-emerald-50 border border-slate-200 hover:border-emerald-300 transition-all cursor-pointer shadow-2xs"
+                    >
+                      <div className="text-[11px] font-bold text-slate-800">Pharmacist</div>
+                      <div className="text-[9px] text-slate-500 truncate">Rajesh Verma</div>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setLoginEmail('sunita.path@apexdiagnostics.org');
+                        setLoginPassword('LabPath@2026');
+                      }}
+                      className="px-2.5 py-1.5 text-left rounded-xl bg-white hover:bg-purple-50 border border-slate-200 hover:border-purple-300 transition-all cursor-pointer shadow-2xs"
+                    >
+                      <div className="text-[11px] font-bold text-slate-800">Diagnostic Lab</div>
+                      <div className="text-[9px] text-slate-500 truncate">Dr. Sunita Patil</div>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setLoginEmail('sunita.caregiver@demo.com');
+                        setLoginPassword('Demo@123');
+                      }}
+                      className="px-2.5 py-1.5 text-left rounded-xl bg-white hover:bg-indigo-50 border border-slate-200 hover:border-indigo-300 transition-all cursor-pointer shadow-2xs"
+                    >
+                      <div className="text-[11px] font-bold text-slate-800">Caregiver</div>
+                      <div className="text-[9px] text-slate-500 truncate">Sunita Rao</div>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setLoginEmail('admin@hospital.org');
+                        setLoginPassword('AdminPassword123!');
+                      }}
+                      className="px-2.5 py-1.5 text-left rounded-xl bg-white hover:bg-rose-50 border border-slate-200 hover:border-rose-300 transition-all cursor-pointer shadow-2xs"
+                    >
+                      <div className="text-[11px] font-bold text-slate-800">Administrator</div>
+                      <div className="text-[9px] text-slate-500 truncate">Hospital Admin</div>
+                    </button>
+                  </div>
+                </div>
+              )}
+
               <div>
                 <label className="block text-xs font-bold text-[#1F2D3D] mb-1">{ui('Email Address')}</label>
                 <input
@@ -3380,57 +5267,51 @@ export default function App() {
                   required
                   value={loginEmail}
                   onChange={(e) => setLoginEmail(e.target.value)}
-                  className="w-full min-h-[42px] px-3 py-1.5 rounded-xl border border-[#DDE7EA] text-xs font-mono"
+                  placeholder="name@domain.com"
+                  className="w-full min-h-[42px] px-3 py-1.5 rounded-xl border border-[#DDE7EA] text-xs font-mono bg-white"
                 />
               </div>
+
               <div>
                 <label className="block text-xs font-bold text-[#1F2D3D] mb-1">{ui('Password')}</label>
                 <input
                   type="password"
                   required
+                  minLength={6}
                   value={loginPassword}
                   onChange={(e) => setLoginPassword(e.target.value)}
-                  className="w-full min-h-[42px] px-3 py-1.5 rounded-xl border border-[#DDE7EA] text-xs font-mono"
+                  placeholder="••••••••"
+                  className="w-full min-h-[42px] px-3 py-1.5 rounded-xl border border-[#DDE7EA] text-xs font-mono bg-white"
                 />
               </div>
+
               <button
                 type="submit"
-                className="w-full min-h-[44px] clay-btn-primary text-xs font-bold cursor-pointer"
+                className="w-full min-h-[46px] clay-btn-primary text-sm font-bold cursor-pointer shadow-md hover:brightness-105 transition-all"
               >
-                {isCreatingAccount ? 'Create Patient Account' : 'Sign In'}
+                {isCreatingAccount
+                  ? registrationRole === 'doctor'
+                    ? 'Register & Open Doctor Practice Portal'
+                    : registrationRole === 'pharmacy'
+                      ? 'Register & Open Jan Aushadhi Portal'
+                      : registrationRole === 'lab'
+                        ? 'Register & Open Diagnostic Lab Portal'
+                        : 'Create Patient Account & Open Wallet'
+                  : 'Sign In to HealthPass'}
               </button>
             </form>
 
-            {isSupabaseConfigured && <button type="button" onClick={() => { setIsCreatingAccount((value) => !value); setLoginError(null); }} className="mt-2 text-xs font-bold text-[#0E7C86] underline">
-              {isCreatingAccount ? 'Already have an account? Sign in' : 'Create a patient account'}
-            </button>}
-
-            {!isCreatingAccount && <div className="pt-3 border-t border-[#DDE7EA] space-y-2">
-              <div className="text-xs font-bold text-[#5B6B7A]">{ui('Fictional demo profiles (simulated sign-in · password:')} <span className="font-mono">Demo@123</span>)</div>
-              <div className="space-y-1.5">
-                {DEMO_PATIENTS.map((demoPatient) => <button key={demoPatient.id} type="button" onClick={() => { setLoginEmail(demoPatient.email); setLoginPassword('Demo@123'); }} className="w-full p-2 rounded-xl bg-[#F5F9FA] border border-[#DDE7EA] text-left text-xs hover:bg-white flex items-center justify-between gap-2 cursor-pointer"><span className="font-bold text-[#1F2D3D]">{demoPatient.name}</span><span className="font-mono text-[#0E7C86]">{demoPatient.email}</span></button>)}
-                {doctorList.map((demoDoctor, index) => {
-                  const email = ['village.doctor@demo.com', 'doctor@demo.com', 'district.doctor@demo.com'][index];
-                  return <button key={demoDoctor.id} type="button" onClick={() => { setLoginEmail(email); setLoginPassword('Demo@123'); }} className="w-full p-2 rounded-xl bg-[#F5F9FA] border border-[#DDE7EA] text-left text-xs hover:bg-white flex items-center justify-between gap-2 cursor-pointer"><span className="font-bold text-[#1F2D3D]">{demoDoctor.name}</span><span className="font-mono text-[#1769AA]">{email}</span></button>;
-                })}
-              </div>
-              <div className="grid grid-cols-3 gap-2">
-                {[
-                  { email: 'pharmacy@demo.com', label: 'Pharmacy' },
-                  { email: 'lab@demo.com', label: 'Diagnostic Lab' },
-                  { email: 'admin@demo.com', label: 'Registry Admin' },
-                ].map((demoRole) => (
-                  <button
-                    key={demoRole.email}
-                    type="button"
-                    onClick={() => { setLoginEmail(demoRole.email); setLoginPassword('Demo@123'); }}
-                    className="min-h-[38px] p-2 rounded-xl bg-[#F5F9FA] border border-[#DDE7EA] text-center text-[11px] font-bold text-[#1F2D3D] hover:bg-white cursor-pointer"
-                  >
-                    {demoRole.label}
-                  </button>
-                ))}
-              </div>
-            </div>}
+            <div className="text-center pt-2 border-t border-[#DDE7EA]">
+              <button
+                type="button"
+                onClick={() => { setIsCreatingAccount((value) => !value); setLoginError(null); }}
+                className="text-xs font-bold text-[#0E7C86] hover:underline cursor-pointer"
+              >
+                {isCreatingAccount
+                  ? 'Already have an account? Sign in'
+                  : 'New to HealthPass? Create an account (Patient, Doctor, Pharmacist, Lab)'}
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -3461,29 +5342,6 @@ export default function App() {
                 </div>
               )}
             </div>
-
-            <div className="space-y-2">
-              <div className="text-xs font-bold text-[#1F2D3D]">
-                Or Tap a Demo Patient Shortcut:
-              </div>
-              {DEMO_PATIENTS.map((dp) => (
-                <button
-                  key={dp.id}
-                  type="button"
-                  onClick={() => {
-                    setDoctorLookupQuery(dp.healthPassId);
-                    setShowScannerModal(false);
-                    handleDoctorLookup(dp.healthPassId);
-                  }}
-                  className="w-full p-3 rounded-xl bg-[#F5F9FA] border border-[#DDE7EA] hover:border-[#0E7C86] text-left flex items-center justify-between cursor-pointer"
-                >
-                  <div className="text-xs font-bold text-[#1F2D3D]">{dp.name}</div>
-                  <span className="font-mono text-xs font-bold text-[#0E7C86]">
-                    {dp.healthPassId}
-                  </span>
-                </button>
-              ))}
-            </div>
           </div>
         </div>
       )}
@@ -3492,7 +5350,7 @@ export default function App() {
         <AddConsultationModal
           lang={lang}
           patientId={activePatientId}
-          patientName="Demo Patient (Ananya Rao)"
+          patientName={preConsentIdentity?.name || doctorRecord?.patient?.name || 'Patient'}
           doctorId={activeDoctorId}
           prefillMed={prefillConsultMed}
           onClose={() => setShowConsultationModal(false)}
@@ -3562,7 +5420,7 @@ export default function App() {
       {showPatientOcrModal && (
         <MedicalDocumentOcrModal
           patientId={activePatientId}
-          patientName="Demo Patient (Ananya Rao)"
+          patientName={walletData?.patient?.name || loggedInUser?.name || 'Patient'}
           uploaderRole="patient"
           lang={lang}
           initialReportType={prescriptionUploadMode ? 'Prescription' : undefined}

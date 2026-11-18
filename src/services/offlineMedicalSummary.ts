@@ -35,7 +35,7 @@ function transact<T>(mode: IDBTransactionMode, operation: (store: IDBObjectStore
 function deriveKey(passphrase: string, salt: Uint8Array) {
   if (!globalThis.crypto?.subtle) return Promise.reject(new Error('Secure device encryption is not available.'));
   return crypto.subtle.importKey('raw', encoder.encode(passphrase), 'PBKDF2', false, ['deriveKey']).then((material) =>
-    crypto.subtle.deriveKey({ name: 'PBKDF2', salt, iterations: 250000, hash: 'SHA-256' }, material, { name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt'])
+    crypto.subtle.deriveKey({ name: 'PBKDF2', salt: salt as any, iterations: 250000, hash: 'SHA-256' }, material, { name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt'])
   );
 }
 

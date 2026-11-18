@@ -613,6 +613,7 @@ export const RxSlipCard: React.FC<{
     selfReported?: boolean;
     refillRequested?: boolean;
     lastTakenAt?: string;
+    source?: string;
   };
   lang: SupportedLang;
   isPatientView?: boolean;
@@ -842,14 +843,25 @@ export const WalletCard: React.FC<{
         className="cursor-pointer select-none max-w-lg mx-auto"
       >
         {!flipped ? (
-          <div className="rounded-3xl bg-gradient-to-br from-[#0E7C86] via-[#0B6770] to-[#1769AA] text-white p-6 sm:p-7 shadow-xl border border-white/20">
-            <div className="flex items-center justify-between gap-2">
+          <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#0E7C86] via-[#0B6770] to-[#1769AA] text-white p-6 sm:p-7 shadow-2xl border border-white/25">
+            {/* Holographic foil shimmer */}
+            <div className="hologram-shimmer" />
+
+            {/* Specular 3D sheen overlay */}
+            <div
+              className="absolute inset-0 pointer-events-none transition-opacity duration-300"
+              style={{
+                background: `radial-gradient(circle at ${50 + tilt.x * 3}% ${50 - tilt.y * 3}%, rgba(255,255,255,0.25) 0%, transparent 60%)`,
+              }}
+            />
+
+            <div className="relative z-10 flex items-center justify-between gap-2">
               <div className="flex items-center gap-2.5">
-                <div className="w-10 h-10 rounded-xl bg-white/15 flex items-center justify-center font-display font-extrabold text-lg">
+                <div className="w-10 h-10 rounded-xl bg-white/20 backdrop-blur-md flex items-center justify-center font-display font-extrabold text-lg shadow-inner border border-white/20">
                   HP
                 </div>
                 <div>
-                  <div className="text-xs font-semibold text-white/80">
+                  <div className="text-xs font-semibold text-white/80 tracking-wider">
                     PATIENT-HELD DIGITAL HEALTH RECORD
                   </div>
                   <div className="text-lg font-display font-bold tracking-tight">
@@ -857,22 +869,58 @@ export const WalletCard: React.FC<{
                   </div>
                 </div>
               </div>
-              <div className="px-3 py-1 rounded-xl bg-white/15 text-white font-mono font-bold text-xs">
-                PRIVATE RECORD
+              <div className="flex items-center gap-2">
+                <div className="px-3 py-1 rounded-xl bg-white/15 backdrop-blur-sm text-white font-mono font-bold text-xs border border-white/15">
+                  PRIVATE RECORD
+                </div>
               </div>
             </div>
 
-            <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {/* EMV Microchip & Contactless Wave */}
+            <div className="relative z-10 mt-5 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <svg className="w-11 h-8 rounded-md shadow-md shrink-0 border border-amber-200/40" viewBox="0 0 44 32" fill="none">
+                  <rect width="44" height="32" rx="5" fill="url(#chip-gold)" />
+                  <rect x="2" y="2" width="40" height="28" rx="3" stroke="#B45309" strokeWidth="0.8" fill="none" opacity="0.6" />
+                  <line x1="2" y1="11" x2="16" y2="11" stroke="#92400E" strokeWidth="1" />
+                  <line x1="2" y1="21" x2="16" y2="21" stroke="#92400E" strokeWidth="1" />
+                  <line x1="28" y1="11" x2="42" y2="11" stroke="#92400E" strokeWidth="1" />
+                  <line x1="28" y1="21" x2="42" y2="21" stroke="#92400E" strokeWidth="1" />
+                  <line x1="16" y1="2" x2="16" y2="30" stroke="#92400E" strokeWidth="1" />
+                  <line x1="28" y1="2" x2="28" y2="30" stroke="#92400E" strokeWidth="1" />
+                  <circle cx="22" cy="16" r="3.5" stroke="#92400E" strokeWidth="1" fill="#FDE68A" />
+                  <defs>
+                    <linearGradient id="chip-gold" x1="0" y1="0" x2="44" y2="32" gradientUnits="userSpaceOnUse">
+                      <stop stopColor="#FDE68A" />
+                      <stop offset="0.3" stopColor="#F59E0B" />
+                      <stop offset="0.7" stopColor="#D97706" />
+                      <stop offset="1" stopColor="#B45309" />
+                    </linearGradient>
+                  </defs>
+                </svg>
+                <div className="text-[11px] font-mono tracking-widest text-teal-100 flex items-center gap-1.5 opacity-90">
+                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping inline-block" />
+                  <span>3D ENCRYPTED VAULT</span>
+                </div>
+              </div>
+              <div className="text-right">
+                <span className="text-[10px] uppercase font-mono tracking-wider px-2 py-0.5 rounded bg-teal-900/40 border border-teal-300/30 text-teal-200">
+                  {patient.bloodGroup ? `BLOOD ${patient.bloodGroup}` : 'VERIFIED'}
+                </span>
+              </div>
+            </div>
+
+            <div className="relative z-10 mt-5 grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-          <div className="text-xs text-white/75">{translateUiPhrase('Patient Name', lang)}</div>
-                <div className="text-xl font-bold mt-0.5">{patient.name}</div>
-                <div className="text-xs text-white/80 mt-0.5">
+                <div className="text-xs text-white/75">{translateUiPhrase('Patient Name', lang)}</div>
+                <div className="text-xl font-bold mt-0.5 tracking-tight">{patient.name}</div>
+                <div className="text-xs text-white/80 mt-0.5 font-medium">
                   {patient.age} Years · {patient.gender}
                 </div>
               </div>
               <div className="sm:text-right">
-          <div className="text-xs text-white/75">{translateUiPhrase('HealthPass Token ID', lang)}</div>
-                <div className="text-lg font-mono font-bold tracking-wider mt-0.5">
+                <div className="text-xs text-white/75">{translateUiPhrase('HealthPass Token ID', lang)}</div>
+                <div className="text-lg font-mono font-bold tracking-wider mt-0.5 text-teal-100">
                   {patient.healthPassId}
                 </div>
                 <div className="text-xs font-mono text-white/80 mt-0.5">
@@ -881,9 +929,9 @@ export const WalletCard: React.FC<{
               </div>
             </div>
 
-            <div className="mt-4 pt-3 border-t border-white/15 flex items-center justify-between text-xs text-white/85">
+            <div className="relative z-10 mt-5 pt-3 border-t border-white/20 flex items-center justify-between text-xs text-white/85">
               <span>{translateUiPhrase('Medical details are private and require patient consent.', lang)}</span>
-              <span className="inline-flex items-center gap-1 font-bold text-white underline">
+              <span className="inline-flex items-center gap-1.5 font-bold text-teal-100 underline hover:text-white">
                 <FlipHorizontal className="w-4 h-4" />
                 Flip for Flat QR
               </span>

@@ -6,6 +6,7 @@ import { findMedicalRecordDuplicate } from './services/medicalRecordDuplicates.j
 import { decidePharmacistPrescriptionRequest, getPharmacistPrescriptionAccess, getPrescriptionDisplayStatus, PHARMACIST_PRESCRIPTION_CATEGORY, revokePharmacistPrescriptionAccess } from './services/pharmacistPrescriptionAccess.js';
 import { clearDemoState, loadDemoState, saveDemoState } from './services/demoLocalStore.js';
 import { routeApiRequest } from './services/apiBackendRouting.js';
+import { getPersistedAuthSession, getRegisteredUsers, saveRegisteredUser, findRegisteredUser, clearPersistedAuthSession } from './services/authStorage.ts';
 
 const isPrescriptionDocument = (record: any) => record?.extractedFields?.reportType === 'Prescription' || /prescription/i.test(record?.category || '');
 const isActiveDemoGrant = (grant: any) => Boolean(
@@ -615,28 +616,174 @@ function handleMockApiRequestInternal(endpoint: string, options: ApiRequestOptio
 
   // Role portals and record actions share this in-memory store so the demo
   // remains interactive even when no API server is running.
+  if (pathname === '/api/auth/register' && method === 'POST') {
+    let body: any = {};
+    try { body = JSON.parse(options.body as string); } catch {}
+    const name = String(body.name || '').trim();
+    const email = String(body.email || '').toLowerCase().trim();
+    const password = String(body.password || '');
+    const role = (['patient', 'doctor', 'pharmacy', 'lab', 'admin'].includes(body.role) ? body.role : 'patient') as any;
+
+    if (!name) return { ok: false, status: 400, data: { error: 'Full name is required.' } };
+    if (!email) return { ok: false, status: 400, data: { error: 'Email address is required.' } };
+    if (!password || password.length < 6) return { ok: false, status: 400, data: { error: 'Password must be at least 6 characters long.' } };
+
+    // Check duplicate
+    const existingUser = findRegisteredUser(email);
+    if (existingUser) {
+      return { ok: false, status: 409, data: { code: 'DUPLICATE_EMAIL', error: 'An account with this email address already exists. Please sign in instead.' } };
+    }
+
+    const simId = `${role}-${Date.now().toString(36)}`;
+    const randomPass = `HP-${Math.floor(1000 + Math.random() * 9000)}-${Math.floor(1000 + Math.random() * 9000)}`;
+
+    const newUser = {
+      id: simId,
+      name,
+      email,
+      role,
+      facilityName: body.facilityName?.trim() || (role === 'doctor' ? 'HealthPass Clinical Centre' : role === 'pharmacy' ? 'Jan Aushadhi Medical Store' : role === 'lab' ? 'Diagnostic Pathology Lab' : undefined),
+      facilityLevel: body.facilityLevel || (role === 'pharmacy' ? 'PHARMACY' : role === 'lab' ? 'LAB' : role === 'doctor' ? 'VILLAGE' : undefined),
+      facilityType: body.facilityType?.trim() || (role === 'pharmacy' ? 'Community Pharmacy' : role === 'lab' ? 'Diagnostic Lab' : undefined),
+      licenseNumber: body.licenseNumber?.trim() || (role === 'doctor' ? 'MCI-LIC-VERIFIED' : role === 'pharmacy' ? 'PHA-LIC-VERIFIED' : role === 'lab' ? 'NABL-LAB-VERIFIED' : undefined),
+      healthPassId: role === 'patient' ? randomPass : undefined,
+      bloodGroup: body.bloodGroup || 'O+',
+      age: body.age ? Number(body.age) : 32,
+      gender: body.gender || 'Female',
+      isVerified: true,
+      backend: 'demo' as const,
+      createdAt: new Date().toISOString(),
+    };
+
+    saveRegisteredUser(newUser as any, password);
+
+    if (role === 'patient') {
+      DEMO_PATIENT_NAMES[newUser.id] = newUser.name;
+      MOCK_STATE.patientHealthProfiles[newUser.id] = {
+        patientId: newUser.id,
+        knownAllergies: '',
+        currentMedications: '',
+        healthConditions: '',
+        pastSurgeries: '',
+        emergencyContactName: 'Emergency Contact',
+        emergencyContactPhone: '+91 98480 99112',
+        bloodGroup: newUser.bloodGroup,
+        source: 'Patient-provided',
+        verificationStatus: 'Unverified',
+        updatedAt: new Date().toISOString(),
+      };
+      MOCK_STATE.medicines.unshift({
+        id: `med-${Date.now()}`,
+        patientId: newUser.id,
+        name: 'Multivitamin & Zinc',
+        genericName: 'Vitamin B-Complex with Zinc',
+        strength: '1 Tablet Daily',
+        dosage: '1 tablet',
+        route: 'Oral',
+        startDate: new Date().toISOString().slice(0, 10),
+        computedStatus: 'ACTIVE',
+        prescriberName: 'Self reported',
+        facilityName: 'HealthPass Wellness',
+        source: 'SELF_REPORTED',
+      });
+      MOCK_STATE.allergies.unshift({
+        id: `alg-${Date.now()}`,
+        patientId: newUser.id,
+        allergen: 'No Known Drug Allergies (NKDA)',
+        severity: 'MILD',
+        reaction: 'None reported',
+        drugClassMatches: [],
+      });
+    } else if (role === 'doctor') {
+      MOCK_STATE.providers.unshift({
+        id: newUser.id,
+        name: newUser.name,
+        email: newUser.email,
+        facilityName: newUser.facilityName || 'HealthPass Clinical Centre',
+        facilityLevel: newUser.facilityLevel || 'VILLAGE',
+        verified: true,
+      });
+    }
+
+    recordDemoAudit('USER_REGISTERED', newUser.id, `${newUser.name} registered as a ${newUser.role}.`);
+    persistDemoStore();
+
+    return {
+      ok: true,
+      status: 201,
+      data: {
+        success: true,
+        user: newUser,
+        token: `token-${newUser.id}`,
+      },
+    };
+  }
+
+  if (pathname === '/api/auth/me' && method === 'GET') {
+    const session = getPersistedAuthSession();
+    if (session?.user) {
+      return { ok: true, status: 200, data: { user: session.user } };
+    }
+    return { ok: false, status: 401, data: { error: 'Not authenticated.' } };
+  }
+
+  if (pathname === '/api/auth/logout' && method === 'POST') {
+    clearPersistedAuthSession();
+    return { ok: true, status: 200, data: { success: true, message: 'Signed out successfully.' } };
+  }
+
   if (pathname === '/api/auth/login' && method === 'POST') {
     let body: any = {};
     try { body = JSON.parse(options.body as string); } catch {}
-    const email = String(body.email || '').toLowerCase();
-    if (body.password !== 'Demo@123') return { ok: false, status: 401, data: { error: 'Use the demo password shown with the selected fictional account.' } };
+    const email = String(body.email || '').toLowerCase().trim();
+    const password = String(body.password || '');
+
+    // 1. First check user-registered accounts
+    const registeredMatch = findRegisteredUser(email, password);
+    if (registeredMatch) {
+      recordDemoAudit('USER_LOGIN', registeredMatch.id, `${registeredMatch.name} signed in successfully.`);
+      return {
+        ok: true,
+        status: 200,
+        data: {
+          success: true,
+          user: { ...registeredMatch, backend: 'demo' },
+          token: `token-${registeredMatch.id}`,
+        },
+      };
+    }
+
+    // 2. Check built-in demo and sample accounts
+    const samplePasswords = ['Demo@123', 'Patient@2026', 'Doctor@2026', 'Pharma@2026', 'LabPath@2026'];
+    const validPassword = samplePasswords.includes(password);
+
     const patients = [
       { email: 'patient@demo.com', role: 'patient', id: 'pat-1', name: 'Demo Patient (Ananya Rao)', healthPassId: 'HP-DEMO-0417' },
+      { email: 'ananya.rao@healthpass.org', role: 'patient', id: 'pat-1', name: 'Ananya Rao', healthPassId: 'HP-DEMO-0417' },
       { email: 'child@demo.com', role: 'patient', id: 'pat-2', name: 'Aarav Kumar (Child Profile)', healthPassId: 'HP-CHILD-0892' },
       { email: 'elder@demo.com', role: 'patient', id: 'pat-3', name: 'Lakshmi Narayana (Elderly Care)', healthPassId: 'HP-ELDER-0931' },
     ];
     const accounts = [
       ...patients,
-      { email: 'village.doctor@demo.com', role: 'doctor', id: 'doc-village', name: 'Dr. Anil Kumar' },
-      { email: 'doctor@demo.com', role: 'doctor', id: 'doc-mandal', name: 'Dr. Rahul Sharma' },
-      { email: 'district.doctor@demo.com', role: 'doctor', id: 'doc-district', name: 'Dr. Meera Reddy' },
-      { email: 'pharmacy@demo.com', role: 'pharmacy', id: 'pharmacy-demo', name: 'Jan Aushadhi Pharmacist' },
-      { email: 'lab@demo.com', role: 'lab', id: 'lab-demo', name: 'Diagnostic Lab Staff' },
-      { email: 'admin@demo.com', role: 'admin', id: 'admin-demo', name: 'Registry Administrator' },
+      { email: 'village.doctor@demo.com', role: 'doctor', id: 'doc-village', name: 'Dr. Anil Kumar', facilityName: 'Village Health Centre, Kothapalli' },
+      { email: 'dr.priya@apollohealth.org', role: 'doctor', id: 'doc-village', name: 'Dr. Priya Sharma', facilityName: 'Apollo Clinical Centre' },
+      { email: 'doctor@demo.com', role: 'doctor', id: 'doc-mandal', name: 'Dr. Rahul Sharma', facilityName: 'Mandal Health Centre, Nandigama' },
+      { email: 'district.doctor@demo.com', role: 'doctor', id: 'doc-district', name: 'Dr. Meera Reddy', facilityName: 'District Hospital, Vijayawada' },
+      { email: 'pharmacy@demo.com', role: 'pharmacy', id: 'pharmacy-demo', name: 'Jan Aushadhi Pharmacist', facilityName: 'Jan Aushadhi Medical Store' },
+      { email: 'rajesh.pharmacy@janaushadhi.gov', role: 'pharmacy', id: 'pharmacy-demo', name: 'Rajesh Pharmacist', facilityName: 'Jan Aushadhi Store' },
+      { email: 'lab@demo.com', role: 'lab', id: 'lab-demo', name: 'Diagnostic Lab Staff', facilityName: 'Apex Diagnostic Lab' },
+      { email: 'sunita.path@apexdiagnostics.org', role: 'lab', id: 'lab-demo', name: 'Dr. Sunita Pathologist', facilityName: 'Apex Diagnostic Lab' },
+      { email: 'admin@demo.com', role: 'admin', id: 'admin-demo', name: 'Registry Administrator', facilityName: 'HealthPass National Registry' },
     ];
-    const user = accounts.find((item) => item.email === email);
-    if (!user) return { ok: false, status: 404, data: { error: 'Choose one of the listed demo accounts.' } };
-    return { ok: true, status: 200, data: { user: { ...user, email, healthPassId: user.healthPassId || 'HP-DEMO-0417' } } };
+    const user = accounts.find((item) => item.email.toLowerCase() === email);
+    if (!user) {
+      return { ok: false, status: 404, data: { error: 'Account not found. Please check your email or click "Create Account".' } };
+    }
+    if (!validPassword && password.length < 4) {
+      return { ok: false, status: 401, data: { error: 'Invalid password. Please enter your password or demo password.' } };
+    }
+    recordDemoAudit('USER_LOGIN', user.id, `${user.name} signed in successfully.`);
+    return { ok: true, status: 200, data: { user: { ...user, email, healthPassId: (user as any).healthPassId || 'HP-DEMO-0417', backend: 'demo' }, token: `token-${user.id}` } };
   }
 
   if (pathname === '/api/pharmacy/request-access' && method === 'POST') {
@@ -652,7 +799,7 @@ function handleMockApiRequestInternal(endpoint: string, options: ApiRequestOptio
     const existing = MOCK_STATE.grants
       .filter((grant: any) => grant.patientId === patientId && grant.providerId === options.pharmacistId && grant.providerType === 'pharmacist')
       .sort((a: any, b: any) => Date.parse(b.createdAt || '') - Date.parse(a.createdAt || ''))[0];
-    const existingAccess = getPharmacistPrescriptionAccess(existing, { patientId, pharmacistId: options.pharmacistId });
+    const existingAccess = getPharmacistPrescriptionAccess(existing, { patientId, pharmacistId: options.pharmacistId } as any);
     if (existingAccess.status === 'PENDING' || existingAccess.canRead) return { ok: true, status: 200, data: { grant: existing } };
     const grant = {
       id: `grant-pharmacy-${Date.now()}`, patientId, providerId: options.pharmacistId,
@@ -682,7 +829,7 @@ function handleMockApiRequestInternal(endpoint: string, options: ApiRequestOptio
     const grant = MOCK_STATE.grants
       .filter((item: any) => item.patientId === patient.id && item.providerId === options.pharmacistId && item.providerType === 'pharmacist')
       .sort((a: any, b: any) => Date.parse(b.createdAt || '') - Date.parse(a.createdAt || ''))[0];
-    const access = getPharmacistPrescriptionAccess(grant, { patientId: patient.id, pharmacistId: options.pharmacistId });
+    const access = getPharmacistPrescriptionAccess(grant, { patientId: patient.id, pharmacistId: options.pharmacistId } as any);
     if (access.canRead) recordDemoAudit('PRESCRIPTIONS_VIEWED', patient.id, 'The demo pharmacist opened prescriptions while prescription-only consent was active.');
     const prescriptions = access.canRead ? MOCK_STATE.prescriptions
       .filter((rx: any) => rx.patientId === patient.id)
@@ -1018,21 +1165,25 @@ function handleMockApiRequestInternal(endpoint: string, options: ApiRequestOptio
   // 1. Patient Wallet
   if (pathname.includes('/wallet')) {
     const patId = pathname.split('/')[3] || 'pat-1';
+    const registeredUser = getRegisteredUsers().find((u) => u.id === patId);
+    const patientName = registeredUser?.name || (patId === 'pat-2' ? 'Aarav Kumar (Child)' : patId === 'pat-3' ? 'Lakshmi Narayana' : DEMO_PATIENT_NAMES[patId] || 'Demo Patient (Ananya Rao)');
+    const patientHpId = registeredUser?.healthPassId || (patId === 'pat-2' ? 'HP-CHILD-0892' : patId === 'pat-3' ? 'HP-ELDER-0931' : 'HP-DEMO-0417');
+
     return {
       ok: true,
       status: 200,
       data: {
         patient: {
           id: patId,
-          name: patId === 'pat-2' ? 'Aarav Kumar (Child)' : patId === 'pat-3' ? 'Lakshmi Narayana' : 'Demo Patient (Ananya Rao)',
-          age: patId === 'pat-2' ? 7 : patId === 'pat-3' ? 68 : 42,
-          gender: patId === 'pat-2' ? 'Male' : patId === 'pat-3' ? 'Male' : 'Female',
-          bloodGroup: 'O+',
-          healthPassId: patId === 'pat-2' ? 'HP-CHILD-0892' : patId === 'pat-3' ? 'HP-ELDER-0931' : 'HP-DEMO-0417',
-          abhaNumber: '91-4820-7391-0417',
-          qrToken: MOCK_STATE.qrTokens[patId] || (patId === 'pat-2' ? 'HP-CHILD-0892' : patId === 'pat-3' ? 'HP-ELDER-0931' : 'HP-DEMO-0417'),
+          name: patientName,
+          age: registeredUser?.age || (patId === 'pat-2' ? 7 : patId === 'pat-3' ? 68 : 42),
+          gender: registeredUser?.gender || (patId === 'pat-2' ? 'Male' : patId === 'pat-3' ? 'Male' : 'Female'),
+          bloodGroup: registeredUser?.bloodGroup || 'O+',
+          healthPassId: patientHpId,
+          abhaNumber: registeredUser ? `91-4820-7391-${patId.slice(-4)}` : '91-4820-7391-0417',
+          qrToken: MOCK_STATE.qrTokens[patId] || patientHpId,
           guardianName: patId === 'pat-2' ? 'Ananya Rao (Mother)' : undefined,
-          emergencyContact: { name: 'Ramesh Rao', relation: 'Spouse', phone: '+91 98480 99112' },
+          emergencyContact: { name: 'Emergency Contact', relation: 'Family', phone: '+91 98480 99112' },
         },
         patientHealthProfile: MOCK_STATE.patientHealthProfiles[patId] || null,
         record: {
@@ -1336,6 +1487,8 @@ function handleMockApiRequestInternal(endpoint: string, options: ApiRequestOptio
       requestedCategories: body.requestedCategories || ['Medical history', 'Prescriptions', 'Medicines'],
       durationHours: body.durationHours || 24,
       status: 'PENDING',
+      // Demo-only patient-held code; never returned to the provider API surface.
+      otpCode: '482910',
       createdAt: new Date().toISOString(),
     };
     MOCK_STATE.grants.push(newGrant);
@@ -1343,8 +1496,42 @@ function handleMockApiRequestInternal(endpoint: string, options: ApiRequestOptio
     return {
       ok: true,
       status: 200,
-      data: { grant: newGrant, simulatedOtp: '482910' },
+      data: { grant: newGrant },
     };
+  }
+
+  // 4b. In-person OTP approval (demo mirrors the backend contract)
+  if (pathname === '/api/provider/approve-in-person-otp') {
+    let body: any = {};
+    try {
+      body = JSON.parse(options.body as string);
+    } catch {}
+    const grant = MOCK_STATE.grants.find((g: any) => g.id === body.grantId);
+    if (!grant || grant.status !== 'PENDING') {
+      return { ok: false, status: 409, data: { code: 'CONSENT_NOT_PENDING', error: 'This consent request is no longer pending.' } };
+    }
+    if (grant.expiresAt && Date.parse(grant.expiresAt) <= Date.now()) {
+      return { ok: false, status: 403, data: { code: 'ACCESS_EXPIRED', error: 'This consent request has expired.' } };
+    }
+    grant.otpAttempts = Number(grant.otpAttempts) || 0;
+    if (grant.otpAttempts >= 5) {
+      grant.otpCode = undefined;
+      return { ok: false, status: 429, data: { code: 'OTP_LOCKED', error: 'Too many incorrect codes. Ask the patient to start a new request.' } };
+    }
+    if (String(body.otp || '').trim() !== String(grant.otpCode || '')) {
+      grant.otpAttempts += 1;
+      if (grant.otpAttempts >= 5) grant.otpCode = undefined;
+      return { ok: false, status: 403, data: { code: 'OTP_INVALID', error: 'The in-person code is incorrect.' } };
+    }
+    grant.status = 'GRANTED';
+    grant.grantedCategories = Array.isArray(body.selectedCategories) && body.selectedCategories.length
+      ? body.selectedCategories
+      : grant.requestedCategories || [];
+    grant.approvedAt = new Date().toISOString();
+    grant.otpCode = undefined;
+    recordDemoAudit('CONSENT_GRANTED', grant.patientId,
+      `${DEMO_PATIENT_NAMES[grant.patientId] || 'The patient'} approved in-person access by sharing a one-time code.`);
+    return { ok: true, status: 200, data: { success: true, grant } };
   }
 
   // 5. Consent decision
@@ -1361,7 +1548,7 @@ function handleMockApiRequestInternal(endpoint: string, options: ApiRequestOptio
       const outcome = decidePharmacistPrescriptionRequest(grant, body.decision, {
         durationHours: body.durationHours || grant.durationHours || 24,
         durationSeconds: body.durationSeconds,
-      });
+      } as any);
       if (!outcome.ok) return { ok: false, status: 403, data: { error: outcome.error } };
       Object.assign(grant, outcome.grant);
     } else if (grant.providerType === 'lab' && body.decision === 'GRANT') {
@@ -1600,9 +1787,46 @@ function handleMockApiRequest(endpoint: string, options: ApiRequestOptions): Api
 // ----------------------------------------------------------------------------
 // MAIN API REQUEST FUNCTION
 // ----------------------------------------------------------------------------
-let activeBackend: 'demo' | 'supabase' = 'demo';
+export async function handleBackendApiRequest<T = any>(
+  endpoint: string,
+  options: ApiRequestOptions = {}
+): Promise<ApiResult<T>> {
+  try {
+    const headers: Record<string, string> = {
+      ...((options.headers as any) || {}),
+    };
+    if (options.body && typeof options.body === 'string' && !headers['Content-Type']) {
+      headers['Content-Type'] = 'application/json';
+    }
+    const res = await fetch(endpoint, {
+      ...options,
+      headers,
+      credentials: 'include',
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      if (res.status === 403 && data.code) {
+        const consentError = map403ToConsentScreen(data.code, data.error || data.message);
+        if (!options.suppressGlobal403 && global403Handler) {
+          global403Handler(consentError, { doctorId: options.doctorId, patientId: options.patientId, endpoint });
+        }
+        return { ok: false, status: res.status, data, consentError };
+      }
+      return { ok: false, status: res.status, data };
+    }
+    return { ok: true, status: res.status, data };
+  } catch (error: any) {
+    return {
+      ok: false,
+      status: 0,
+      data: { error: error?.message || 'Network error connecting to HealthPass backend.' } as any,
+    };
+  }
+}
 
-export function setHealthPassBackend(backend: 'demo' | 'supabase') {
+let activeBackend: 'demo' | 'supabase' | 'api' = 'api';
+
+export function setHealthPassBackend(backend: 'demo' | 'supabase' | 'api') {
   activeBackend = backend;
 }
 
@@ -1611,10 +1835,11 @@ export async function apiRequest<T = any>(
   options: ApiRequestOptions = {}
 ): Promise<ApiResult<T>> {
   return await routeApiRequest(activeBackend, endpoint, options, {
-    supabase: async (path, requestOptions) => {
+    api: async (path: string, requestOptions: ApiRequestOptions) => handleBackendApiRequest<T>(path, requestOptions),
+    supabase: async (path: string, requestOptions: ApiRequestOptions) => {
       const { handleSupabaseApiRequest } = await import('./services/supabaseApi.ts');
       return handleSupabaseApiRequest(path, requestOptions);
     },
-    demo: (path, requestOptions) => handleMockApiRequest(path, requestOptions),
+    demo: (path: string, requestOptions: ApiRequestOptions) => handleMockApiRequest(path, requestOptions),
   }) as ApiResult<T>;
 }

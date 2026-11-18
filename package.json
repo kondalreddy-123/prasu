@@ -5,9 +5,11 @@
   "type": "module",
   "scripts": {
     "dev": "vite --port=3000 --host=0.0.0.0",
+    "server": "node server/index.js",
+    "start": "node server/index.js",
     "ai-server": "node server/reportExplanationServer.mjs",
     "build": "vite build",
-    "test": "node --test src/services/prescriptionDuplicates.test.js src/services/medicalRecordDuplicates.test.js src/services/pharmacistPrescriptionAccess.test.js src/services/demoLocalStore.test.js src/services/apiBackendRouting.test.js src/services/supabaseMigrationContract.test.js src/services/reportSpeech.test.js src/services/reportExplanation.test.js src/services/ocrServiceSafety.test.js server/reportExplanationService.test.mjs",
+    "test": "node --test src/services/prescriptionDuplicates.test.js src/services/medicalRecordDuplicates.test.js src/services/pharmacistPrescriptionAccess.test.js src/services/demoLocalStore.test.js src/services/apiBackendRouting.test.js src/services/supabaseMigrationContract.test.js src/services/reportSpeech.test.js src/services/reportExplanation.test.js src/services/ocrServiceSafety.test.js server/reportExplanationService.test.mjs server/server.test.mjs server/caregiverAndAdvanced.test.mjs",
     "preview": "vite preview",
     "clean": "rm -rf dist server.js",
     "lint": "tsc --noEmit"
@@ -15,16 +17,35 @@
   "dependencies": {
     "@supabase/supabase-js": "^2.117.3",
     "@tailwindcss/vite": "^4.3.3",
+    "@types/three": "^0.186.0",
     "@vitejs/plugin-react": "^6.1.1",
+    "bcryptjs": "^3.0.3",
+    "cookie-parser": "^1.4.7",
+    "cors": "^2.8.6",
+    "dotenv": "^18.0.8",
+    "express": "^5.3.0",
+    "framer-motion": "^14.3.0",
+    "jsonwebtoken": "^9.0.3",
     "lucide-react": "^0.546.0",
+    "mongoose": "^9.11.2",
     "motion": "^12.23.24",
     "qrcode.react": "^4.2.0",
     "react": "^19.0.1",
     "react-dom": "^19.0.1",
+    "three": "^0.186.1",
     "vite": "^8.3.0"
   },
   "devDependencies": {
+    "@types/bcryptjs": "^2.4.6",
+    "@types/cookie-parser": "^1.4.10",
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.6",
+    "@types/jsonwebtoken": "^9.0.10",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
     "esbuild": "^0.28.0",
+    "mongodb-memory-server": "^11.3.0",
+    "typescript": "^7.0.2",
     "vite": "^8.3.0"
   }
 }

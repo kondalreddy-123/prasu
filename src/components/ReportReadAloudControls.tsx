@@ -24,8 +24,8 @@ export const ReportReadAloudControls: React.FC<{ sections: ReadingSection[]; lan
     const synthesis = window.speechSynthesis;
     const controller = createReportSpeechController({
       synthesis,
-      createUtterance: (value) => new SpeechSynthesisUtterance(value),
-      onState: setPlaybackState,
+      createUtterance: (value: string) => new SpeechSynthesisUtterance(value),
+      onState: (state: string) => setPlaybackState(state as any),
     });
     controllerRef.current = controller;
     const onVoicesChanged = () => setVoicesVersion((version) => version + 1);
