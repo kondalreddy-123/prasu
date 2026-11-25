@@ -163,28 +163,36 @@ grant select on public.verified_providers, public.consent_requests,
 grant select, insert, update, delete on public.health_records to authenticated;
 grant usage, select on sequence public.audit_events_id_seq to authenticated;
 
+drop policy if exists patient_profile_read_own on public.patient_profiles;
 create policy patient_profile_read_own on public.patient_profiles
   for select to authenticated using (user_id = (select auth.uid()));
+drop policy if exists patient_profile_insert_own on public.patient_profiles;
 create policy patient_profile_insert_own on public.patient_profiles
   for insert to authenticated with check (user_id = (select auth.uid()));
+drop policy if exists patient_profile_update_own on public.patient_profiles;
 create policy patient_profile_update_own on public.patient_profiles
   for update to authenticated using (user_id = (select auth.uid()))
   with check (user_id = (select auth.uid()));
 
+drop policy if exists doctor_application_read_own on public.doctor_applications;
 create policy doctor_application_read_own on public.doctor_applications
   for select to authenticated using (user_id = (select auth.uid()));
+drop policy if exists doctor_application_submit_own on public.doctor_applications;
 create policy doctor_application_submit_own on public.doctor_applications
   for insert to authenticated with check (
     user_id = (select auth.uid()) and status = 'PENDING' and reviewed_at is null
   );
 
+drop policy if exists provider_read_own_verification on public.verified_providers;
 create policy provider_read_own_verification on public.verified_providers
   for select to authenticated using (user_id = (select auth.uid()));
 
+drop policy if exists consent_request_read_patient_or_provider on public.consent_requests;
 create policy consent_request_read_patient_or_provider on public.consent_requests
   for select to authenticated using (
     patient_user_id = (select auth.uid()) or provider_user_id = (select auth.uid())
   );
+drop policy if exists consent_grant_read_patient_or_provider on public.consent_grants;
 create policy consent_grant_read_patient_or_provider on public.consent_grants
   for select to authenticated using (
     patient_user_id = (select auth.uid()) or provider_user_id = (select auth.uid())
@@ -192,8 +200,10 @@ create policy consent_grant_read_patient_or_provider on public.consent_grants
 
 -- Medical records are directly readable only by their owner. Providers must use
 -- get_consented_records(), which checks active, unexpired consent and audits access.
+drop policy if exists health_record_read_patient_only on public.health_records;
 create policy health_record_read_patient_only on public.health_records
   for select to authenticated using (patient_user_id = (select auth.uid()));
+drop policy if exists health_record_insert_patient_reported on public.health_records;
 create policy health_record_insert_patient_reported on public.health_records
   for insert to authenticated with check (
     patient_user_id = (select auth.uid())
@@ -201,6 +211,7 @@ create policy health_record_insert_patient_reported on public.health_records
     and source_type = 'PATIENT_REPORTED'
     and verification_status = 'UNVERIFIED'
   );
+drop policy if exists health_record_update_patient_reported on public.health_records;
 create policy health_record_update_patient_reported on public.health_records
   for update to authenticated using (
     patient_user_id = (select auth.uid()) and source_type = 'PATIENT_REPORTED'
@@ -210,11 +221,13 @@ create policy health_record_update_patient_reported on public.health_records
     and source_type = 'PATIENT_REPORTED'
     and verification_status = 'UNVERIFIED'
   );
+drop policy if exists health_record_delete_patient_reported on public.health_records;
 create policy health_record_delete_patient_reported on public.health_records
   for delete to authenticated using (
     patient_user_id = (select auth.uid()) and source_type = 'PATIENT_REPORTED'
   );
 
+drop policy if exists audit_event_read_patient_or_actor on public.audit_events;
 create policy audit_event_read_patient_or_actor on public.audit_events
   for select to authenticated using (
     patient_user_id = (select auth.uid()) or actor_user_id = (select auth.uid())

@@ -350,11 +350,11 @@ export const ThreeRoleCanvas: React.FC<ThreeRoleCanvasProps> = ({
 
     // Animation Loop
     let animationFrameId: number;
-    const clock = new THREE.Clock();
+    const startTime = performance.now();
 
     const animate = () => {
       animationFrameId = requestAnimationFrame(animate);
-      const elapsed = clock.getElapsedTime();
+      const elapsed = (performance.now() - startTime) / 1000;
 
       // Smooth mouse tilt
       currentX += (targetX - currentX) * 0.08;

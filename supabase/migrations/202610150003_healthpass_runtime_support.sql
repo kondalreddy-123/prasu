@@ -86,8 +86,7 @@ begin
 end;
 $$;
 drop trigger if exists on_auth_user_created_healthpass on auth.users;
-create trigger on_auth_user_created_healthpass
-  after insert on auth.users for each row execute function public.bootstrap_healthpass_auth_user();
+create trigger on_auth_user_created_healthpass after insert on auth.users for each row execute function public.bootstrap_healthpass_auth_user();
 revoke all on function public.bootstrap_healthpass_auth_user() from public, anon, authenticated;
 
 create or replace function public.lookup_patient_identity(p_healthpass_id text)
@@ -383,17 +382,17 @@ begin
       'status', case
         when request.status = 'PENDING' then 'PENDING'
         when request.status = 'REJECTED' or request.status = 'CANCELLED' then 'DENIED'
-        when grant.id is null then request.status
-        when grant.status = 'REVOKED' then 'REVOKED'
-        when grant.expires_at <= now() then 'EXPIRED'
+        when cg.id is null then request.status
+        when cg.status = 'REVOKED' then 'REVOKED'
+        when cg.expires_at <= now() then 'EXPIRED'
         else 'GRANTED'
       end,
-      'grantedCategories', coalesce(grant.granted_categories, array[]::text[]),
-      'expiresAt', grant.expires_at, 'grantId', grant.id
+      'grantedCategories', coalesce(cg.granted_categories, array[]::text[]),
+      'expiresAt', cg.expires_at, 'grantId', cg.id
     )
     from public.consent_requests request
     left join public.verified_providers provider on provider.user_id = request.provider_user_id
-    left join public.consent_grants grant on grant.request_id = request.id
+    left join public.consent_grants cg on cg.request_id = request.id
     where request.patient_user_id = auth.uid()
     order by request.requested_at desc;
 end;

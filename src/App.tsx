@@ -106,7 +106,7 @@ import {
   registerGlobal403Handler,
 } from './api.ts';
 import { isSupabaseConfigured } from './services/supabaseClient.ts';
-import { restoreSupabaseUser, signInSupabase, signOutSupabase, signUpSupabasePatient } from './services/supabaseAuth.ts';
+import { restoreSupabaseUser, signInSupabase, signOutSupabase, signUpSupabasePatient, signUpSupabaseUser } from './services/supabaseAuth.ts';
 import {
   getPersistedAuthSession,
   setPersistedAuthSession,
@@ -1082,36 +1082,57 @@ export default function App() {
           payload.licenseNumber = registrationLicenseNumber.trim() || 'NABL-LAB-VERIFIED';
         }
 
-        const res = await apiRequest('/api/auth/register', {
-          method: 'POST',
-          body: JSON.stringify(payload),
-          suppressGlobal403: true,
-        });
+        let registeredUser: any = null;
 
-        if (!res.ok) {
-          throw new Error(
-            res.status === 0
-              ? 'The HealthPass server is unreachable. Check the backend connection and try again.'
-              : res.data?.error || 'Account creation failed.'
-          );
-        }
-        if (!res.data?.user) {
-          throw new Error(res.data?.error || 'Account creation failed.');
-        }
-        const registeredUser: any = res.data.user;
+        if (isSupabaseConfigured) {
+          const supabaseResult = await signUpSupabaseUser(payload);
+          if (supabaseResult.verificationRequired) {
+            setLoginError(
+              supabaseResult.message ||
+                'Account created. A hospital administrator must verify your credentials before access is enabled.'
+            );
+            showToast('Account created. Await hospital administrator verification.');
+            return;
+          }
+          if (supabaseResult.confirmationRequired) {
+            setLoginError(supabaseResult.message || 'Check your email to confirm your account.');
+            showToast('Confirmation email sent.');
+            return;
+          }
+          registeredUser = supabaseResult.user;
+          setHealthPassBackend('supabase');
+        } else {
+          const res = await apiRequest('/api/auth/register', {
+            method: 'POST',
+            body: JSON.stringify(payload),
+            suppressGlobal403: true,
+          });
 
-        // Doctors must be verified by a hospital administrator before they can
-        // sign in. Never fabricate a local demo account instead.
-        if (res.data?.verificationRequired) {
-          setLoginError(
-            res.data?.message ||
-              'Account created. A hospital administrator must verify your credentials before access is enabled.'
-          );
-          showToast('Account created. Await hospital administrator verification.');
-          return;
+          if (!res.ok) {
+            throw new Error(
+              res.status === 0
+                ? 'The HealthPass server is unreachable. Check the backend connection and try again.'
+                : res.data?.error || 'Account creation failed.'
+            );
+          }
+          if (!res.data?.user) {
+            throw new Error(res.data?.error || 'Account creation failed.');
+          }
+          registeredUser = res.data.user;
+
+          // Doctors must be verified by a hospital administrator before they can
+          // sign in. Never fabricate a local demo account instead.
+          if (res.data?.verificationRequired) {
+            setLoginError(
+              res.data?.message ||
+                'Account created. A hospital administrator must verify your credentials before access is enabled.'
+            );
+            showToast('Account created. Await hospital administrator verification.');
+            return;
+          }
+          setHealthPassBackend('api');
         }
 
-        setHealthPassBackend('api');
         saveRegisteredUser(registeredUser as any, loginPassword);
         setIsCreatingAccount(false);
         setLoggedInUser(registeredUser);
@@ -1147,35 +1168,45 @@ export default function App() {
       return;
     }
 
-    const res = await apiRequest('/api/auth/login', {
-      method: 'POST',
-      body: JSON.stringify({ email: loginEmail.trim(), password: loginPassword }),
-      suppressGlobal403: true,
-    });
-    let user: any = res.ok ? res.data?.user : null;
-    let backend: 'api' | 'supabase' | 'demo' = (res.ok && res.data?.user?.backend) || 'api';
-    if (!user) {
-      // Only a genuine network failure may fall back to local/demo or Supabase.
-      // A 401 (bad password) or 403 (unverified provider) must surface directly.
-      if (res.status !== 0) {
-        setLoginError(translateUiPhrase(res.data?.error || 'Invalid email or password.', lang));
-        return;
-      }
-      const localMatch = findRegisteredUser(loginEmail.trim(), loginPassword);
-      if (localMatch) {
-        user = localMatch;
-        backend = 'demo';
-      } else if (isSupabaseConfigured) {
-        try {
-          user = await signInSupabase(loginEmail.trim(), loginPassword);
-          backend = 'supabase';
-        } catch {
-          setLoginError(translateUiPhrase(res.data?.error || 'The HealthPass server is unreachable. Please try again.', lang));
+    let user: any = null;
+    let backend: 'api' | 'supabase' | 'demo' = 'api';
+
+    if (isSupabaseConfigured) {
+      try {
+        user = await signInSupabase(loginEmail.trim(), loginPassword);
+        backend = 'supabase';
+      } catch (supabaseErr: any) {
+        // If Supabase authentication fails, check local accounts before showing error
+        const localMatch = findRegisteredUser(loginEmail.trim(), loginPassword);
+        if (localMatch) {
+          user = localMatch;
+          backend = 'demo';
+        } else {
+          setLoginError(translateUiPhrase(supabaseErr?.message || 'Invalid email or password.', lang));
           return;
         }
-      } else {
-        setLoginError(translateUiPhrase('The HealthPass server is unreachable. Check the backend connection and try again.', lang));
-        return;
+      }
+    } else {
+      const res = await apiRequest('/api/auth/login', {
+        method: 'POST',
+        body: JSON.stringify({ email: loginEmail.trim(), password: loginPassword }),
+        suppressGlobal403: true,
+      });
+      user = res.ok ? res.data?.user : null;
+      backend = (res.ok && res.data?.user?.backend) || 'api';
+      if (!user) {
+        if (res.status !== 0) {
+          setLoginError(translateUiPhrase(res.data?.error || 'Invalid email or password.', lang));
+          return;
+        }
+        const localMatch = findRegisteredUser(loginEmail.trim(), loginPassword);
+        if (localMatch) {
+          user = localMatch;
+          backend = 'demo';
+        } else {
+          setLoginError(translateUiPhrase('The HealthPass server is unreachable. Check the backend connection and try again.', lang));
+          return;
+        }
       }
     }
     setHealthPassBackend(backend);
@@ -5193,8 +5224,8 @@ export default function App() {
                     <button
                       type="button"
                       onClick={() => {
-                        setLoginEmail('ananya.rao@healthpass.org');
-                        setLoginPassword('Patient@2026');
+                        setLoginEmail('ananya.rao@healthpass.in');
+                        setLoginPassword('HealthPass@123');
                       }}
                       className="px-2.5 py-1.5 text-left rounded-xl bg-white hover:bg-teal-50 border border-slate-200 hover:border-teal-300 transition-all cursor-pointer shadow-2xs"
                     >
@@ -5204,57 +5235,58 @@ export default function App() {
                     <button
                       type="button"
                       onClick={() => {
-                        setLoginEmail('dr.priya@apollohealth.org');
-                        setLoginPassword('Doctor@2026');
+                        setLoginEmail('anil.kumar@healthpass.in');
+                        setLoginPassword('HealthPass@123');
                       }}
                       className="px-2.5 py-1.5 text-left rounded-xl bg-white hover:bg-sky-50 border border-slate-200 hover:border-sky-300 transition-all cursor-pointer shadow-2xs"
                     >
                       <div className="text-[11px] font-bold text-slate-800">Doctor</div>
-                      <div className="text-[9px] text-slate-500 truncate">Dr. Priya Sharma</div>
+                      <div className="text-[9px] text-slate-500 truncate">Dr. Anil Kumar</div>
                     </button>
                     <button
                       type="button"
                       onClick={() => {
-                        setLoginEmail('rajesh.pharmacy@janaushadhi.gov');
-                        setLoginPassword('Pharma@2026');
+                        setLoginEmail('pharmacist@healthpass.in');
+                        setLoginPassword('HealthPass@123');
                       }}
                       className="px-2.5 py-1.5 text-left rounded-xl bg-white hover:bg-emerald-50 border border-slate-200 hover:border-emerald-300 transition-all cursor-pointer shadow-2xs"
                     >
                       <div className="text-[11px] font-bold text-slate-800">Pharmacist</div>
-                      <div className="text-[9px] text-slate-500 truncate">Rajesh Verma</div>
+                      <div className="text-[9px] text-slate-500 truncate">Jan Aushadhi</div>
                     </button>
                     <button
                       type="button"
                       onClick={() => {
-                        setLoginEmail('sunita.path@apexdiagnostics.org');
-                        setLoginPassword('LabPath@2026');
+                        setLoginEmail('lab@healthpass.in');
+                        setLoginPassword('HealthPass@123');
                       }}
                       className="px-2.5 py-1.5 text-left rounded-xl bg-white hover:bg-purple-50 border border-slate-200 hover:border-purple-300 transition-all cursor-pointer shadow-2xs"
                     >
                       <div className="text-[11px] font-bold text-slate-800">Diagnostic Lab</div>
-                      <div className="text-[9px] text-slate-500 truncate">Dr. Sunita Patil</div>
+                      <div className="text-[9px] text-slate-500 truncate">District Path Lab</div>
                     </button>
                     <button
                       type="button"
                       onClick={() => {
-                        setLoginEmail('sunita.caregiver@demo.com');
-                        setLoginPassword('Demo@123');
+                        setLoginEmail('ananya.rao@healthpass.in');
+                        setLoginPassword('HealthPass@123');
+                        setIsCreatingAccount(false);
                       }}
                       className="px-2.5 py-1.5 text-left rounded-xl bg-white hover:bg-indigo-50 border border-slate-200 hover:border-indigo-300 transition-all cursor-pointer shadow-2xs"
                     >
                       <div className="text-[11px] font-bold text-slate-800">Caregiver</div>
-                      <div className="text-[9px] text-slate-500 truncate">Sunita Rao</div>
+                      <div className="text-[9px] text-slate-500 truncate">Use Patient login</div>
                     </button>
                     <button
                       type="button"
                       onClick={() => {
-                        setLoginEmail('admin@hospital.org');
-                        setLoginPassword('AdminPassword123!');
+                        setLoginEmail('anil.kumar@healthpass.in');
+                        setLoginPassword('HealthPass@123');
                       }}
                       className="px-2.5 py-1.5 text-left rounded-xl bg-white hover:bg-rose-50 border border-slate-200 hover:border-rose-300 transition-all cursor-pointer shadow-2xs"
                     >
                       <div className="text-[11px] font-bold text-slate-800">Administrator</div>
-                      <div className="text-[9px] text-slate-500 truncate">Hospital Admin</div>
+                      <div className="text-[9px] text-slate-500 truncate">Dr. Anil Kumar</div>
                     </button>
                   </div>
                 </div>

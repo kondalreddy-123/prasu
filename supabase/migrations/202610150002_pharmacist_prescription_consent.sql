@@ -64,12 +64,15 @@ revoke all on public.pharmacist_applications, public.prescription_records from a
 grant select, insert on public.pharmacist_applications to authenticated;
 grant select on public.prescription_records to authenticated;
 
+drop policy if exists pharmacist_application_read_own on public.pharmacist_applications;
 create policy pharmacist_application_read_own on public.pharmacist_applications
   for select to authenticated using (user_id = (select auth.uid()));
+drop policy if exists pharmacist_application_submit_own on public.pharmacist_applications;
 create policy pharmacist_application_submit_own on public.pharmacist_applications
   for insert to authenticated with check (
     user_id = (select auth.uid()) and status = 'PENDING' and reviewed_at is null
   );
+drop policy if exists prescription_record_read_patient_only on public.prescription_records;
 create policy prescription_record_read_patient_only on public.prescription_records
   for select to authenticated using (patient_user_id = (select auth.uid()));
 

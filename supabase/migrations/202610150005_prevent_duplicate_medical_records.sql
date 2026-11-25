@@ -95,8 +95,7 @@ revoke all on function public.reject_duplicate_health_record() from public, anon
 revoke all on function public.find_duplicate_health_record(uuid, text, text, text, date, jsonb) from public, anon;
 
 drop trigger if exists reject_duplicate_health_record on public.health_records;
-create trigger reject_duplicate_health_record
-before insert on public.health_records
+create trigger reject_duplicate_health_record before insert on public.health_records
 for each row execute function public.reject_duplicate_health_record();
 
 grant execute on function public.find_duplicate_health_record(uuid, text, text, text, date, jsonb) to authenticated;

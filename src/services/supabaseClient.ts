@@ -1,8 +1,9 @@
 import { createClient } from '@supabase/supabase-js';
 
+
 const env = import.meta.env;
-const url = String(env.VITE_SUPABASE_URL || '').trim();
-const anonKey = String(env.VITE_SUPABASE_ANON_KEY || '').trim();
+const url = String(env.VITE_SUPABASE_URL || '').trim().replace(/^['"]|['"]$/g, '');
+const anonKey = String(env.VITE_SUPABASE_ANON_KEY || '').trim().replace(/^=+/, '').replace(/^['"]|['"]$/g, '');
 
 export const isSupabaseConfigured = Boolean(
   url && anonKey && !url.includes('your-project') && !anonKey.includes('replace-me')

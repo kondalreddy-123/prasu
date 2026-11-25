@@ -26,8 +26,8 @@ alter table public.emergency_access_events enable row level security;
 revoke all on public.emergency_access_events from anon, authenticated;
 grant select on public.emergency_access_events to authenticated;
 
-create policy emergency_access_event_read_patient_or_actor
-  on public.emergency_access_events for select to authenticated
+drop policy if exists emergency_access_event_read_patient_or_actor on public.emergency_access_events;
+create policy emergency_access_event_read_patient_or_actor on public.emergency_access_events for select to authenticated
   using (patient_user_id = (select auth.uid()) or actor_user_id = (select auth.uid()));
 
 create or replace function public.emergency_patient_lookup(
